@@ -79,7 +79,7 @@ package object stockpile {
     mainBoard: Set[DeckListCard],
     sideBoard: Set[DeckListCard],
     maybeBoard: Set[DeckListCard],
-  ) extends
+  )
 
   /**
     * Represents a deck built from an inventory
