@@ -1,4 +1,4 @@
-package mtg.stockpile
+package vdx.stockpile
 
 import cats.effect.IO
 
