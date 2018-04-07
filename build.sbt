@@ -38,7 +38,11 @@ lazy val core = module("core")
    .settings(
      libraryDependencies ++= Seq(
        "org.typelevel" %% "cats-core" % "1.0.1",
-       "org.typelevel" %% "cats-effect" % "0.5",
+       "org.typelevel" %% "cats-effect" % "0.10",
+
+       // Inventory
+       "com.nrinaudo" %% "kantan.csv" % "0.1.19", // csv parser + writer
+
        "org.scalatest" %% "scalatest" % "3.0.4" % "test",
      ),
   )
