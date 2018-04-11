@@ -2,7 +2,7 @@ package vdx.stockpile
 
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card._
-import vdx.stockpile.instances._
+import vdx.stockpile.instances.eq._
 
 class CardSpec extends FlatSpec with Matchers {
   "DeckListCard.withCount" should "set count without changing other values" in {

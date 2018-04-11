@@ -12,7 +12,7 @@ import kantan.csv.{ReadResult, RowDecoder, rfc}
 import vdx.stockpile.Card._
 import vdx.stockpile.CardDB.RepositoryAlg
 import vdx.stockpile.Inventory._
-import vdx.stockpile.instances._
+import vdx.stockpile.instances.eq._
 import vdx.stockpile.{CardList, Inventory}
 
 package object deckbox {
@@ -86,5 +86,4 @@ package object deckbox {
       } yield inventory
     }
   }
-
 }

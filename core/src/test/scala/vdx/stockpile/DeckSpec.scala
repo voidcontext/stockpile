@@ -2,7 +2,7 @@ package vdx.stockpile
 
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.instances._
+import vdx.stockpile.instances.eq._
 
 class DeckSpec extends FlatSpec with Matchers {
   val cardTarmogoyf = DeckListCard("Tarmogoyf", 4)

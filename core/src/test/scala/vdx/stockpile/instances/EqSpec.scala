@@ -3,6 +3,7 @@ package vdx.stockpile.instances
 import cats.Eq
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card._
+import vdx.stockpile.instances.eq._
 
 class EqSpec extends FlatSpec with Matchers {
   "Eq[Edition]" should "be an implicit value" in {
