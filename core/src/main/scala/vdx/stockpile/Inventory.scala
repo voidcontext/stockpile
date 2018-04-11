@@ -4,7 +4,9 @@ import cats.data.Writer
 
 object Inventory {
 
-  sealed trait InventoryReaderLog extends Error
+  sealed trait InventoryReaderLog {
+    def message: String
+  }
 
   final case class InventoryError(message: String) extends InventoryReaderLog
 

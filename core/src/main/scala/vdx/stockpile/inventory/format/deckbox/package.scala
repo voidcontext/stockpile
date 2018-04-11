@@ -76,7 +76,7 @@ package object deckbox {
               case (w, Valid(card)) =>
                 appendRawCardToList(w, card)
               case (w, Invalid(error)) =>
-                w.tell(Vector(InventoryError(error.getMessage)))
+                w.tell(Vector(InventoryError(error.message)))
             })
           )
 
