@@ -1,18 +1,19 @@
-package vdx.stockpile.inventory
+package vdx.stockpile.inventory.format
 
-import cats.effect.IO
-import cats.syntax.either._
-import kantan.codecs.Result.{Failure, Success}
-import kantan.csv.ops._
-import kantan.csv.{RowDecoder, rfc}
-import vdx.stockpile.Card._
-import vdx.stockpile.{CardList, Inventory}
-import vdx.stockpile.Inventory._
-import vdx.stockpile.instances._
 import java.io.File
 
+import cats.Monad
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{NonEmptyList, ValidatedNel}
+import cats.data.{Validated, Writer}
+import cats.implicits._
+import kantan.codecs.Result.{Failure, Success}
+import kantan.csv.ops._
+import kantan.csv.{ReadResult, RowDecoder, rfc}
+import vdx.stockpile.Card._
+import vdx.stockpile.CardDB.RepositoryAlg
+import vdx.stockpile.Inventory._
+import vdx.stockpile.instances._
+import vdx.stockpile.{CardList, Inventory}
 
 package object deckbox {
   final case class RawDeckboxCard(
@@ -28,26 +29,66 @@ package object deckbox {
   private[deckbox] implicit val cardDecoder: RowDecoder[RawDeckboxCard] =
     RowDecoder.decoder(0, 2, 3, 4, 5, 6, 7)(RawDeckboxCard.apply)
 
-  class IOReaderInterpreter(file: File) extends InventoryReaderAlg[IO] {
-    override def read: IO[ValidatedNel[InventoryError, Inventory]] =
-      IO({
-        val parsedCsv = file.toURI.toURL.readCsv[List, RawDeckboxCard](rfc.withHeader)
+  trait CsvParserAlg[F[_]] {
+    protected def parseRaw(): List[ReadResult[RawDeckboxCard]] =
+      file.toURI.toURL.readCsv[List, RawDeckboxCard](rfc.withHeader)
 
-        def foil(state: Option[String]): FoilState = state match {
-          case Some("foil") => Foil
-          case _            => NonFoil
-        }
+    def file: File
 
-        parsedCsv
-          .foldLeft[ValidatedNel[InventoryError, Inventory]](Valid(CardList.empty[InventoryCard]))({
-            case (list, Success(card)) =>
-              list.map(l => l.add(InventoryCard(card.name, card.count, Edition(card.edition), foil(card.foil))))
-            case (Valid(_), Failure(message)) =>
-              Invalid(NonEmptyList.one(InventoryError(message.getMessage)))
-            case (errList, Failure(message)) =>
-              errList.leftMap(errList => errList.prepend(InventoryError(message.getMessage)))
-          })
-      })
+    def parse(): F[List[ReadResult[RawDeckboxCard]]]
+  }
+
+  class InventoryReaderThroughParserAndCardDBInterpreter[F[_]: Monad](
+    parser: CsvParserAlg[F],
+    db: RepositoryAlg[F],
+    liftToF: Validated[InventoryReaderLog, RawDeckboxCard] => F[Validated[InventoryReaderLog, RawDeckboxCard]]
+  ) extends InventoryReaderAlg[F] {
+    private[this] type CSVResult = ReadResult[RawDeckboxCard]
+
+    override def read: F[Writer[Vector[InventoryReaderLog], Inventory]] = {
+      def foil: PartialFunction[Option[String], FoilState] = {
+        case Some("foil") => Foil
+        case _            => NonFoil
+      }
+
+      def mapEdition: PartialFunction[CSVResult, F[Validated[InventoryReaderLog, RawDeckboxCard]]] = {
+        case Success(card) =>
+          db.findSimpleSetByName(card.edition)
+            .map(
+              maybeSet =>
+                maybeSet
+                  .fold[Validated[InventoryReaderLog, RawDeckboxCard]]({
+                    Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
+                  })(
+                    simpleSet => Valid(card.copy(edition = simpleSet.code))
+                )
+            )
+        case Failure(error) => liftToF(Invalid(InventoryError(error.getMessage)))
+      }
+
+      def appendRawCardToList(w: Writer[Vector[InventoryReaderLog], Inventory], card: RawDeckboxCard) =
+        w.map(
+          _.add(
+            InventoryCard(card.name, card.count, Edition(card.edition), foil(card.foil))
+          )
+        )
+
+      def buildInventory(rawCards: List[ReadResult[RawDeckboxCard]]) =
+        rawCards
+          .traverse[F, Validated[InventoryReaderLog, RawDeckboxCard]](mapEdition)
+          .map(
+            _.foldLeft(Writer(Vector.empty[InventoryReaderLog], CardList.empty[InventoryCard]))({
+              case (w, Valid(card)) =>
+                appendRawCardToList(w, card)
+              case (w, Invalid(error)) =>
+                w.tell(Vector(InventoryError(error.getMessage)))
+            })
+          )
+
+      parser
+        .parse()
+        .flatMap(buildInventory)
+    }
   }
 
 }

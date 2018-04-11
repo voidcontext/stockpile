@@ -1,15 +1,15 @@
 package vdx.stockpile
 
-import cats.data.ValidatedNel
-
-import scala.language.higherKinds
+import cats.data.Writer
 
 object Inventory {
 
-  case class InventoryError(message: String)
+  sealed trait InventoryReaderLog extends Error
+
+  final case class InventoryError(message: String) extends InventoryReaderLog
 
   trait InventoryReaderAlg[F[_]] {
-    def read: F[ValidatedNel[InventoryError, Inventory]]
+    def read: F[Writer[Vector[InventoryReaderLog], Inventory]]
   }
 
   trait InventoryWriterAlg[F[_]] {

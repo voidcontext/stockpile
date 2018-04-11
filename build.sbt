@@ -6,6 +6,7 @@ val defaultSettings = Seq(
   scalaVersion := "2.12.4",
 
   scalacOptions in ThisBuild ++= Seq(
+    "-language:higherKinds",
     "-deprecation",
     "-feature",
   ),
@@ -34,11 +35,17 @@ lazy val root = (project in file("."))
     bintrayEnsureLicenses := ()
   )
 
+
+val circeVersion = "0.9.3"
 lazy val core = module("core")
    .settings(
      libraryDependencies ++= Seq(
        "org.typelevel" %% "cats-core" % "1.0.1",
        "org.typelevel" %% "cats-effect" % "0.10",
+
+       "io.circe" %% "circe-core" % circeVersion,
+       "io.circe" %% "circe-generic" % circeVersion,
+       "io.circe" %% "circe-parser" % circeVersion,
 
        // Inventory
        "com.nrinaudo" %% "kantan.csv" % "0.1.19", // csv parser + writer
