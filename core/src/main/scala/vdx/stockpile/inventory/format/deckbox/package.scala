@@ -54,15 +54,10 @@ package object deckbox {
       def mapEdition: PartialFunction[CSVResult, F[Validated[InventoryReaderLog, RawDeckboxCard]]] = {
         case Success(card) =>
           db.findSimpleSetByName(card.edition)
-            .map(
-              maybeSet =>
-                maybeSet
-                  .fold[Validated[InventoryReaderLog, RawDeckboxCard]]({
-                    Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
-                  })(
-                    simpleSet => Valid(card.copy(edition = simpleSet.code))
-                )
-            )
+            .map({
+              case Some(simpleSet) => Valid(card.copy(edition = simpleSet.code))
+              case None            => Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
+            })
         case Failure(error) => liftToF(Invalid(InventoryError(error.getMessage)))
       }
 
@@ -85,9 +80,10 @@ package object deckbox {
             })
           )
 
-      parser
-        .parse()
-        .flatMap(buildInventory)
+      for {
+        cards <- parser.parse()
+        inventory <- buildInventory(cards)
+      } yield inventory
     }
   }
 
