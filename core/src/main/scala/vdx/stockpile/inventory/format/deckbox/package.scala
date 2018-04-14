@@ -42,13 +42,13 @@ package object deckbox {
   class InventoryReaderThroughParserAndCardDBInterpreter[F[_]: Monad](
     parser: CsvParserAlg[F],
     db: RepositoryAlg[F]
-  ) extends InventoryReaderAlg[F] {
+  ) extends InventoryLoaderAlg[F] {
 
     private type CSVResult = ReadResult[RawDeckboxCard]
-    private type ValidatedResult = Validated[InventoryReaderLog, RawDeckboxCard]
-    private type Logged[A] = Writer[Vector[InventoryReaderLog], A]
+    private type ValidatedResult = Validated[InventoryLoaderLog, RawDeckboxCard]
+    private type Logged[A] = Writer[Vector[InventoryLoaderLog], A]
 
-    override def read: F[Writer[Vector[InventoryReaderLog], Inventory]] = {
+    override def load: F[Writer[Vector[InventoryLoaderLog], Inventory]] = {
       def foil: PartialFunction[Option[String], FoilState] = {
         case Some("foil") => Foil
         case _            => NonFoil
@@ -62,7 +62,7 @@ package object deckbox {
               case None            => Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
             })
         case Failure(error) =>
-          Validated.invalid[InventoryReaderLog, RawDeckboxCard](InventoryError(error.getMessage)).pure[F]
+          Validated.invalid[InventoryLoaderLog, RawDeckboxCard](InventoryError(error.getMessage)).pure[F]
       }
 
       def appendRawCardToList(inventory: Inventory, card: RawDeckboxCard) =
@@ -82,9 +82,9 @@ package object deckbox {
             w.tell(Vector(error))
         }
 
-      def buildInventory(rawCards: List[ReadResult[RawDeckboxCard]]) =
+      def buildInventory(rawCards: List[CSVResult]) =
         rawCards
-          .traverse[F, Validated[InventoryReaderLog, RawDeckboxCard]](mapEditionAndValidate)
+          .traverse[F, ValidatedResult](mapEditionAndValidate)
           .map(validatedResultToCardList)
 
       for {

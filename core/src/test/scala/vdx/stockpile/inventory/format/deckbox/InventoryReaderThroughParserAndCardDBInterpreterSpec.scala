@@ -31,19 +31,19 @@ class InventoryReaderThroughParserAndCardDBInterpreterSpec extends FlatSpec with
   )
 
   "Deckbox IORederInterpreter" should "import csv file" in {
-    val (_, value) = reader.read.unsafeRunSync().run
+    val (_, value) = reader.load.unsafeRunSync().run
 
     (value.toList should have).length(81)
   }
 
   it should "translate edition names to edition codes" in {
-    val (_, value) = reader.read.unsafeRunSync().run
+    val (_, value) = reader.load.unsafeRunSync().run
 
     value.toList.head.edition.code should be("A25")
   }
 
   it should "add a message when a card's set doesn't exist" in {
-    val (log, _) = reader.read.unsafeRunSync().run
+    val (log, _) = reader.load.unsafeRunSync().run
 
     log.head.message should startWith("Cannot find set")
   }
