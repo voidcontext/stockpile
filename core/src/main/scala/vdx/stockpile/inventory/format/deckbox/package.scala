@@ -5,6 +5,7 @@ import java.io.File
 import cats.Monad
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, Writer}
+import cats.syntax.writer
 import cats.implicits._
 import kantan.codecs.Result.{Failure, Success}
 import kantan.csv.ops._
@@ -40,10 +41,12 @@ package object deckbox {
 
   class InventoryReaderThroughParserAndCardDBInterpreter[F[_]: Monad](
     parser: CsvParserAlg[F],
-    db: RepositoryAlg[F],
-    liftToF: Validated[InventoryReaderLog, RawDeckboxCard] => F[Validated[InventoryReaderLog, RawDeckboxCard]]
+    db: RepositoryAlg[F]
   ) extends InventoryReaderAlg[F] {
-    private[this] type CSVResult = ReadResult[RawDeckboxCard]
+
+    private type CSVResult = ReadResult[RawDeckboxCard]
+    private type ValidatedResult = Validated[InventoryReaderLog, RawDeckboxCard]
+    private type Logged[A] = Writer[Vector[InventoryReaderLog], A]
 
     override def read: F[Writer[Vector[InventoryReaderLog], Inventory]] = {
       def foil: PartialFunction[Option[String], FoilState] = {
@@ -51,34 +54,38 @@ package object deckbox {
         case _            => NonFoil
       }
 
-      def mapEdition: PartialFunction[CSVResult, F[Validated[InventoryReaderLog, RawDeckboxCard]]] = {
+      def mapEditionAndValidate: PartialFunction[CSVResult, F[ValidatedResult]] = {
         case Success(card) =>
           db.findSimpleSetByName(card.edition)
             .map({
               case Some(simpleSet) => Valid(card.copy(edition = simpleSet.code))
               case None            => Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
             })
-        case Failure(error) => liftToF(Invalid(InventoryError(error.getMessage)))
+        case Failure(error) =>
+          Validated.invalid[InventoryReaderLog, RawDeckboxCard](InventoryError(error.getMessage)).pure[F]
       }
 
-      def appendRawCardToList(w: Writer[Vector[InventoryReaderLog], Inventory], card: RawDeckboxCard) =
-        w.map(
-          _.add(
+      def appendRawCardToList(inventory: Inventory, card: RawDeckboxCard) =
+        inventory.combine(
+          CardList(
             InventoryCard(card.name, card.count, Edition(card.edition), foil(card.foil))
           )
         )
 
+      def validatedResultToCardList(result: List[ValidatedResult]) =
+        result.foldLeft(
+          CardList.empty[InventoryCard].pure[Logged]
+        ) {
+          case (w, Valid(card)) =>
+            w.map(appendRawCardToList(_, card))
+          case (w, Invalid(error)) =>
+            w.tell(Vector(error))
+        }
+
       def buildInventory(rawCards: List[ReadResult[RawDeckboxCard]]) =
         rawCards
-          .traverse[F, Validated[InventoryReaderLog, RawDeckboxCard]](mapEdition)
-          .map(
-            _.foldLeft(Writer(Vector.empty[InventoryReaderLog], CardList.empty[InventoryCard]))({
-              case (w, Valid(card)) =>
-                appendRawCardToList(w, card)
-              case (w, Invalid(error)) =>
-                w.tell(Vector(InventoryError(error.message)))
-            })
-          )
+          .traverse[F, Validated[InventoryReaderLog, RawDeckboxCard]](mapEditionAndValidate)
+          .map(validatedResultToCardList)
 
       for {
         cards <- parser.parse()

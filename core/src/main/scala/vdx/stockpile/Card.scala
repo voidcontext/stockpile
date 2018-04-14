@@ -1,6 +1,6 @@
 package vdx.stockpile
 
-sealed trait Card[A <: Card[A]] {
+sealed trait Card[A <: Card[A]] { self: A =>
   def name: String
 
   def count: Int

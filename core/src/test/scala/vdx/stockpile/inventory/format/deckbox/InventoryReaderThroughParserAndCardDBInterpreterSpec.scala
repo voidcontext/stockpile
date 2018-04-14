@@ -27,8 +27,7 @@ class InventoryReaderThroughParserAndCardDBInterpreterSpec extends FlatSpec with
 
   val reader = new InventoryReaderThroughParserAndCardDBInterpreter[IO](
     parser,
-    db,
-    IO.apply(_)
+    db
   )
 
   "Deckbox IORederInterpreter" should "import csv file" in {

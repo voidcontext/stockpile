@@ -16,7 +16,7 @@ class DeckSpec extends FlatSpec with Matchers {
   }
 
   "Deck(...)" should "import mainboard cards when set" in {
-    val deck = Deck(mainBoard = CardList().add(cardTarmogoyf))
+    val deck = Deck(mainBoard = CardList(cardTarmogoyf))
 
     deck.mainBoard.contains(cardTarmogoyf) shouldBe true
     deck.sideBoard.toList shouldBe empty
@@ -24,7 +24,7 @@ class DeckSpec extends FlatSpec with Matchers {
   }
 
   it should "import sideboard cards when set" in {
-    val deck = Deck(sideBoard = CardList().add(cardTarmogoyf))
+    val deck = Deck(sideBoard = CardList(cardTarmogoyf))
 
     deck.mainBoard.toList shouldBe empty
     deck.sideBoard.contains(cardTarmogoyf) shouldBe true
@@ -32,7 +32,7 @@ class DeckSpec extends FlatSpec with Matchers {
   }
 
   it should "import maybeboard cards when set" in {
-    val deck = Deck(maybeBoard = CardList().add(cardTarmogoyf))
+    val deck = Deck(maybeBoard = CardList(cardTarmogoyf))
 
     deck.mainBoard.toList shouldBe empty
     deck.sideBoard.toList shouldBe empty

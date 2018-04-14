@@ -1,7 +1,7 @@
 package vdx.stockpile
 
 import org.scalatest.{FlatSpec, Matchers}
-import vdx.stockpile.Card.DeckListCard
+import vdx.stockpile.Card.{DeckListCard, InventoryCard}
 import vdx.stockpile.instances.eq._
 
 class CardListSpec extends FlatSpec with Matchers {
@@ -13,20 +13,25 @@ class CardListSpec extends FlatSpec with Matchers {
     list.toList shouldBe empty
   }
 
-  "CardList.add(card)" should "add a single card" in {
-    val list = CardList().add(card)
+  "CardList(card)" should "add a single card" in {
+    val list = CardList(card)
 
     (list.toList should have).length(1)
   }
 
   it should "add the given card" in {
-    val list = CardList().add(card)
+    val list = CardList(card)
 
     list.toList.head should equal(card)
   }
+  "CardList.combine()" should "combine 2 empty lists" in {
+    val list = CardList[InventoryCard]().combine(CardList())
 
-  it should "add increase the count of a card when the same card is added multiple times" in {
-    val list = CardList().add(card).add(card)
+    list.toList shouldBe empty
+  }
+
+  it should "add increase the count of a card when the same card is combined" in {
+    val list = CardList(card).combine(CardList(card))
 
     list.toList.head should equal(DeckListCard("Thought-Knot Seer", 2))
   }
@@ -38,7 +43,7 @@ class CardListSpec extends FlatSpec with Matchers {
   }
 
   it should "return true when a card is in the list" in {
-    val list = CardList().add(card)
+    val list = CardList(card)
 
     list.contains(card) should be(true)
   }

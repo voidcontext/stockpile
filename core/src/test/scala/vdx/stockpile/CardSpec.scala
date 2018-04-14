@@ -15,7 +15,7 @@ class CardSpec extends FlatSpec with Matchers {
   it should "have an Eq instance to construct cardlists" in {
     val card = DeckListCard("Tarmogoyf", 4)
 
-    CardList.empty.add(card) shouldBe an[CardList[DeckListCard]]
+    CardList(card) shouldBe an[CardList[DeckListCard]]
   }
 
   "InventoryCard.withCount" should "set count without changing other values" in {
@@ -28,7 +28,7 @@ class CardSpec extends FlatSpec with Matchers {
   it should "have an Eq instance to construct cardlists" in {
     val card = InventoryCard("Tarmogoyf", 4, Edition("MM3"), NonFoil)
 
-    CardList.empty.add(card) shouldBe an[CardList[InventoryCard]]
+    CardList(card) shouldBe an[CardList[InventoryCard]]
   }
 
   "WantsListCard.withCount" should "set count without changing other values" in {
@@ -41,6 +41,6 @@ class CardSpec extends FlatSpec with Matchers {
   it should "have an Eq instance to construct cardlists" in {
     val card = WantsListCard("Tarmogoyf", 4, None, None)
 
-    CardList.empty.add(card) shouldBe an[CardList[WantsListCard]]
+    CardList(card) shouldBe an[CardList[WantsListCard]]
   }
 }
