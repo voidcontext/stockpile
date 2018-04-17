@@ -1,31 +1,38 @@
 package vdx.stockpile
 
-import cats.{Eq, Monoid}
+import cats.Eq
+import vdx.stockpile.cardlist.CardListOperations
 
 sealed trait CardList[A <: Card[A]] {
   def contains(card: A)(implicit eq: Eq[A]): Boolean
 
   def combine(other: CardList[A])(implicit eq: Eq[A]): CardList[A]
 
-  def foldLeft[B](z: B)(f: (B, A) => B): B
+  def toList: List[A]
 
-  def toList: List[A] = foldLeft(List.empty[A])(_ :+ _)
+  def foldLeft[B](z: B)(f: (B, A) => B): B = toList.foldLeft(z)(f)
+
+  def filter(pred: A => Boolean)(implicit eq: Eq[A]): CardList[A] = foldLeft(CardList.empty[A]) { (list, card) =>
+    if (pred(card)) list.combine(CardList(card)) else list
+  }
 }
 
-object CardList {
-
+object CardList extends CardListOperations {
+  def empty[A <: Card[A]]: CardList[A] = new CardListStrict[A](List.empty)
   def apply[A <: Card[A]](): CardList[A] = empty
 
   def apply[A <: Card[A]](card: A): CardList[A] = new CardListStrict[A](List(card))
 
-  def empty[A <: Card[A]]: CardList[A] = new CardListStrict[A](List.empty)
+  def apply[A <: Card[A]](cards: A*)(implicit eq: Eq[A]): CardList[A] = cards.foldLeft(empty[A]) { (list, card) =>
+    list.combine(apply(card))
+  }
 
   private class CardListStrict[A <: Card[A]](cards: List[A]) extends CardList[A] {
 
     override def contains(card: A)(implicit eq: Eq[A]): Boolean = cards.exists(eq.eqv(_, card))
 
     override def combine(other: CardList[A])(implicit eq: Eq[A]): CardList[A] =
-      other.foldLeft(this) { (list, card) =>
+      other.toList.foldLeft(this) { (list, card) =>
         list.add(card)
       }
 
@@ -39,6 +46,6 @@ object CardList {
       )
     }
 
-    override def foldLeft[B](z: B)(f: (B, A) => B): B = cards.foldLeft(z)(f)
+    override def toList: List[A] = cards
   }
 }
