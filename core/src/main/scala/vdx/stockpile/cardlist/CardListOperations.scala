@@ -32,7 +32,12 @@ trait CardListOperations extends EqInstances {
     override def apply(
       a: CardList[DeckListCard],
       b: CardList[InventoryCard]
-    ): CardList[DeckListCard] = ???
+    ): CardList[DeckListCard] = a.foldLeft(CardList.empty[DeckListCard]) { (list, card) =>
+      val totalNumOfHaves = b.filter(_.name == card.name).toList.map(_.count).sum
+
+      if (totalNumOfHaves > 0) list.combine(CardList(card.withCount(Math.min(card.count, totalNumOfHaves))))
+      else list
+    }
   }
 
 }
