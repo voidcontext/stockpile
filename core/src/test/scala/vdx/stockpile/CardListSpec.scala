@@ -31,9 +31,25 @@ class CardListSpec extends FlatSpec with Matchers {
   }
 
   it should "add increase the count of a card when the same card is combined" in {
-    val list = CardList(card).combine(CardList(card))
+    val cards1 = List(
+      DeckListCard("Path to Exile", 1),
+      DeckListCard("Tarmogoyf", 4),
+      DeckListCard("Thought-Knot Seer", 4)
+    )
+    val cards2 = List(
+      DeckListCard("Eldrazi Displacer", 2),
+      DeckListCard("Tarmogoyf", 4)
+    )
+    val list = CardList(cards1: _*).combine(CardList(cards2: _*))
 
-    list.toList.head should equal(DeckListCard("Thought-Knot Seer", 2))
+    list.toList should equal(
+      List(
+        DeckListCard("Path to Exile", 1),
+        DeckListCard("Tarmogoyf", 8),
+        DeckListCard("Thought-Knot Seer", 4),
+        DeckListCard("Eldrazi Displacer", 2)
+      )
+    )
   }
 
   "Cardlist.contains(card)" should "return false when a card is not in the list" in {

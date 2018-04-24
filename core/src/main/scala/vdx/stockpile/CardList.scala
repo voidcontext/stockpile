@@ -18,34 +18,38 @@ sealed trait CardList[A <: Card[A]] {
 }
 
 object CardList extends CardListOperations {
-  def empty[A <: Card[A]]: CardList[A] = new CardListStrict[A](List.empty)
+  def empty[A <: Card[A]]: CardList[A] = new CardListStrict[A](Vector.empty)
   def apply[A <: Card[A]](): CardList[A] = empty
 
-  def apply[A <: Card[A]](card: A): CardList[A] = new CardListStrict[A](List(card))
+  def apply[A <: Card[A]](card: A): CardList[A] = new CardListStrict[A](Vector(card))
 
   def apply[A <: Card[A]](cards: A*)(implicit eq: Eq[A]): CardList[A] = cards.foldLeft(empty[A]) { (list, card) =>
     list.combine(apply(card))
   }
 
-  private class CardListStrict[A <: Card[A]](cards: List[A]) extends CardList[A] {
+  private class CardListStrict[A <: Card[A]](cards: Seq[A]) extends CardList[A] { self =>
 
     override def contains(card: A)(implicit eq: Eq[A]): Boolean = cards.exists(eq.eqv(_, card))
 
     override def combine(other: CardList[A])(implicit eq: Eq[A]): CardList[A] =
-      other.toList.foldLeft(this) { (list, card) =>
+      other.foldLeft(self) { (list, card) =>
         list.add(card)
       }
 
     private def add(card: A)(implicit eq: Eq[A]): CardListStrict[A] = {
       new CardListStrict[A](
         if (contains(card)) {
-          cards.map(current => if (eq.eqv(current, card)) card.withCount(card.count + current.count) else card)
+          cards.map(
+            current =>
+              if (eq.eqv(current, card)) current.withCount(card.count + current.count)
+              else current
+          )
         } else {
           cards :+ card
         }
       )
     }
 
-    override def toList: List[A] = cards
+    override def toList: List[A] = cards.toList
   }
 }
