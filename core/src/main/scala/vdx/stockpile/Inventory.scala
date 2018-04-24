@@ -4,6 +4,8 @@ import cats.data.Writer
 
 object Inventory {
 
+  type InventoryLoaderResult = Writer[Vector[InventoryLoaderLog], Inventory]
+
   sealed trait InventoryLoaderLog {
     def message: String
   }
@@ -11,7 +13,7 @@ object Inventory {
   final case class InventoryError(message: String) extends InventoryLoaderLog
 
   trait InventoryLoaderAlg[F[_]] {
-    def load: F[Writer[Vector[InventoryLoaderLog], Inventory]]
+    def load: F[InventoryLoaderResult]
   }
 
   trait InventoryWriterAlg[F[_]] {

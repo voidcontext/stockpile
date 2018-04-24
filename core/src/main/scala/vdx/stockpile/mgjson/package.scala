@@ -6,6 +6,7 @@ import io.circe.generic.auto._
 import vdx.stockpile.CardDB.{CardSet, CardWithSimpleSet, RepositoryAlg}
 
 import scala.collection.immutable.HashMap
+import scala.concurrent.Future
 import scala.io.Source
 
 package object mgjson {
@@ -13,16 +14,16 @@ package object mgjson {
 
   private val jsonString = Source.fromResource("AllSets-x.json").mkString
 
-  private lazy val dbFuture: IO[List[CardSet]] = IO {
+  private lazy val dbIO: IO[List[CardSet]] = IO.pure(
     decode[DB](jsonString) match {
       case Left(error) => throw error
       case Right(db)   => db.values.toList
     }
-  }
+  )
 
   trait MtgJsonDBInterpreter extends RepositoryAlg[IO] {
     override def findSimpleSetByName(name: String): IO[Option[CardDB.SimpleSet]] =
-      dbFuture.map(
+      dbIO.map(
         sets => sets.find(_.name == name).map(_.asSimple)
       )
   }

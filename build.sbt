@@ -10,10 +10,9 @@ val defaultSettings = Seq(
     "-deprecation",
     "-feature",
   ),
-
 )
 
-def module(moduleName: String) = Project(moduleName, file(moduleName))
+def module(moduleName: String): Project = Project(moduleName, file(moduleName))
   .settings(defaultSettings)
   .settings(
     name := s"stockpile-$moduleName",
@@ -37,19 +36,37 @@ lazy val root = (project in file("."))
 
 
 val circeVersion = "0.9.3"
+val catsVersion = "1.1.0"
+val catsEffectVersion = "0.10.1"
+val scalatestVersion = "3.0.4"
+val akkaVersion = "2.5.12"
+
 lazy val core = module("core")
    .settings(
      libraryDependencies ++= Seq(
-       "org.typelevel" %% "cats-core" % "1.0.1",
-       "org.typelevel" %% "cats-effect" % "0.10",
+       "org.typelevel" %% "cats-core" % catsVersion,
+       "org.typelevel" %% "cats-effect" % catsEffectVersion,
 
        "io.circe" %% "circe-core" % circeVersion,
        "io.circe" %% "circe-generic" % circeVersion,
        "io.circe" %% "circe-parser" % circeVersion,
 
        // Inventory
-       "com.nrinaudo" %% "kantan.csv" % "0.1.19", // csv parser + writer
+       "com.nrinaudo" %% "kantan.csv" % "0.4.0", // csv parser + writer
 
-       "org.scalatest" %% "scalatest" % "3.0.4" % "test",
+       "org.scalatest" %% "scalatest" % scalatestVersion % Test,
      ),
   )
+
+lazy val cli = module("cli")
+  .settings(
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "org.typelevel" %% "cats-core" % catsVersion,
+      "org.typelevel" %% "cats-effect" % catsEffectVersion,
+      "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+
+      "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
+      "org.scalatest" %% "scalatest" % scalatestVersion % Test,
+    ),
+  ).dependsOn(core)

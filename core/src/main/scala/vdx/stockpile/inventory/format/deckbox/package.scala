@@ -7,7 +7,6 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, Writer}
 import cats.syntax.writer
 import cats.implicits._
-import kantan.codecs.Result.{Failure, Success}
 import kantan.csv.ops._
 import kantan.csv.{ReadResult, RowDecoder, rfc}
 import vdx.stockpile.Card._
@@ -55,13 +54,13 @@ package object deckbox {
       }
 
       def mapEditionAndValidate: PartialFunction[CSVResult, F[ValidatedResult]] = {
-        case Success(card) =>
+        case Right(card) =>
           db.findSimpleSetByName(card.edition)
             .map({
               case Some(simpleSet) => Valid(card.copy(edition = simpleSet.code))
               case None            => Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
             })
-        case Failure(error) =>
+        case Left(error) =>
           Validated.invalid[InventoryLoaderLog, RawDeckboxCard](InventoryError(error.getMessage)).pure[F]
       }
 
