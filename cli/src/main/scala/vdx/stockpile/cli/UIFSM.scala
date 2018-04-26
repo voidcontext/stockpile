@@ -1,20 +1,33 @@
 package vdx.stockpile.cli
 
-import akka.actor.FSM
+import akka.actor.{ActorRef, ActorRefFactory, FSM, Props}
 import vdx.stockpile.cli.UISpec._
+import vdx.stockpile.cli.console.Console
 
-class UIFSM extends FSM[State, Data] {
+class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends FSM[State, Data] {
+  val core = childFactory(context)
+
+  override def preStart(): Unit = {
+    super.preStart()
+
+    // TODO: inject file somehow
+    core ! CoreSpec.LoadInventory(loadLastInventoryFromDownloads())
+  }
+
   startWith(Uninitialized, Empty)
 
   private def defaultHandlers(currentScreen: Screen, context: Context): PartialFunction[MenuItem, State] = {
     case a: Action =>
-      context.runAction(a)
+      runAction(a)
       enterWorkingState(currentScreen, context)
     case Menu.Nop =>
       stay()
     case Menu.Quit =>
       self ! Exit
       stay()
+  }
+  private def runAction: PartialFunction[Action, Unit] = {
+    case Menu.InventoryExportTerminal => core ! CoreSpec.PrintInventory
   }
 
   private def appendDefaultHandlers(
@@ -31,21 +44,17 @@ class UIFSM extends FSM[State, Data] {
     goto(Working).using(data.copy(screenStack = current :: data.screenStack))
 
   private def goBack(data: Context) = data match {
-    case Context(_, _, head :: tail) => goto(head).using(data.copy(screenStack = tail))
+    case Context(head :: tail) => goto(head).using(data.copy(screenStack = tail))
   }
 
   when(Uninitialized) {
-    case Event(Initialize(actionRunner, console), Empty) =>
-      goto(Initialized).using(Context(console, actionRunner, List.empty))
-  }
-
-  when(Initialized) {
-    case Event(InventoryAvailable, data) => goto(InventoryOnlyScreen).using(data)
+    case Event(InventoryAvailable, Empty) =>
+      goto(InventoryOnlyScreen).using(Context(List.empty))
   }
 
   when(InventoryOnlyScreen) {
     case Event(DrawMenu, data: Context) => {
-      data.console.menu(Menu.main)(
+      console.menu(Menu.main)(
         appendDefaultHandlers(
           {
             case Menu.InventoryExport =>
@@ -60,23 +69,22 @@ class UIFSM extends FSM[State, Data] {
 
   when(InventoryExportScreen) {
     case Event(DrawMenu, data: Context) =>
-      data.console.menu(Menu.export)(defaultHandlers(InventoryExportScreen, data))
+      console.menu(Menu.export)(defaultHandlers(InventoryExportScreen, data))
   }
 
   when(Working) {
-    case Event(WorkerFinished(r: InventoryResult), data @ Context(_, _, head :: tail)) =>
-      r.inventory.toList.foreach(data.console.println)
+    case Event(WorkerFinished(r: InventoryResult), data @ Context(head :: tail)) =>
+      r.inventory.toList.foreach(console.println)
       goBack(data)
   }
 
   whenUnhandled {
-    case Event(Exit, data @ Context(_, _, head :: tail)) =>
+    case Event(Exit, data @ Context(head :: tail)) =>
       println(" ---> Exit: back")
       goBack(data)
     case Event(Exit, data: Context) =>
       println(data)
       println(" ---> Exit: exit")
-//      data.backendRef ! CoreSpec.Exit
       context.system.terminate()
       stop()
   }

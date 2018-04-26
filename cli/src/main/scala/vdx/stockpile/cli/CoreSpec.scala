@@ -13,13 +13,10 @@ trait CoreSpec {
   sealed trait Message
 
   case object Uninitialized extends State
-  case object Initialized extends State
   case object InventoryLoaded extends State
 
   case object Empty extends Data
   final case class Context(
-    ref: ActorRef,
-    inventoryLoader: File => IO[InventoryLoaderResult],
     inventory: Option[Inventory]
   ) extends Data
 

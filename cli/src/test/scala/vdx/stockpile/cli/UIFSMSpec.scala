@@ -1,6 +1,6 @@
 package vdx.stockpile.cli
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, PoisonPill, Props}
 import akka.testkit.{TestFSMRef, TestProbe}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
@@ -14,7 +14,7 @@ import scala.concurrent.Await
 class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   implicit val system: ActorSystem = ActorSystem("test")
 
-  class ConsoleMock[State](var actions: List[MenuItem], var inputs: List[String]) extends Console {
+  class ConsoleMock(var actions: List[MenuItem] = List.empty, var inputs: List[String] = List.empty) extends Console {
 
     var displayedMenus: Vector[Menu] = Vector()
     var printedLines: Vector[String] = Vector()
@@ -37,8 +37,9 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     override def println(x: Any): Unit = printedLines = printedLines :+ x.toString
   }
 
-  private def fsm() = {
-    TestFSMRef(new UIFSM)
+  private def fsm(console: Console = new ConsoleMock()) = {
+    val probe = TestProbe()
+    (probe, TestFSMRef(new UIFSM(_ => probe.ref, console)))
   }
 
   def dummyHandler: PartialFunction[MenuItem, Unit] = {
@@ -46,39 +47,30 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   "UIFSM" should "start in Uninitialized state" in {
-    val ui = fsm()
+    val (_, ui) = fsm()
 
     ui.stateName should be(UISpec.Uninitialized)
     ui.stateData should be(UISpec.Empty)
   }
 
-  it should "setup its context after initialisation" in {
-    val ui = fsm()
-
-    ui ! UISpec.Initialize(dummyHandler, new ConsoleMock(List.empty, List.empty))
-
-    ui.stateName should be(UISpec.Initialized)
-    ui.stateData match {
-      case UISpec.Context(_, _, stack) => stack shouldBe empty
-      case _                           => fail()
-    }
+  it should "delegate inventory loading to core once it's initialized" in {
+    val (probe, ui) = fsm()
+    probe.expectMsg(CoreSpec.LoadInventory(loadLastInventoryFromDownloads()))
   }
 
   it should "draw the main menu once the inventory is loaded to core" in {
-    val ui = fsm()
+    val console = new ConsoleMock(List(Menu.Nop), List.empty)
+    val (probe, ui) = fsm(console)
 
-    ui ! UISpec.Initialize(dummyHandler, new ConsoleMock(List(Menu.Nop), List.empty))
     ui ! UISpec.InventoryAvailable
 
     ui.stateName should be(UISpec.InventoryOnlyScreen)
   }
 
   it should "enter into the selected submenu" in {
-    val ui = fsm()
-
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.Nop), List.empty)
+    val (probe, ui) = fsm(console)
 
-    ui ! UISpec.Initialize(dummyHandler, console)
     ui ! UISpec.InventoryAvailable
 
     ui.stateName should be(UISpec.InventoryExportScreen)
@@ -86,57 +78,56 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   it should "enter into Working state when running an action in a submenu" in {
-    val ui = fsm()
+    val console = new ConsoleMock(List(Menu.InventoryExport, Menu.InventoryExportTerminal), List.empty)
+    val (probe, ui) = fsm(console)
 
-    ui ! UISpec.Initialize(
-      dummyHandler,
-      new ConsoleMock(List(Menu.InventoryExport, Menu.InventoryExportTerminal), List.empty)
-    )
     ui ! UISpec.InventoryAvailable
 
     ui.stateName should be(UISpec.Working)
   }
 
-  def printInventory(ui: TestFSMRef[UISpec.State, UISpec.Data, UIFSM], inventory: Inventory) = {
+  def printInventory(inventory: Inventory) = {
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.InventoryExportTerminal, Menu.Nop), List.empty)
+    val (probe, ui) = fsm(console)
 
-    ui ! UISpec.Initialize(dummyHandler, console)
     ui ! UISpec.InventoryAvailable
 
     ui.stateName should be(UISpec.Working)
 
+    probe.fishForMessage(1.second, "") {
+      case CoreSpec.PrintInventory => true
+      case _                       => false
+    } should be(CoreSpec.PrintInventory)
+
     ui ! UISpec.WorkerFinished(UISpec.InventoryResult(inventory))
-    console
+    (probe, ui, console)
   }
 
   it should "receive a result when it's in Working state" in {
-    val ui = fsm()
     val inventory = CardList(
       InventoryCard("Path To Exile", 4, Edition("CON"), NonFoil),
       InventoryCard("Tarmogoyf", 4, Edition("MM3"), NonFoil)
     )
 
-    val console = printInventory(ui, inventory)
+    val (_, ui, console) = printInventory(inventory)
 
     console.printedLines should equal(inventory.toList.map(_.toString))
   }
 
   it should "go back to the previous screen after processing the result" in {
-    val ui = fsm()
     val inventory = CardList(
       InventoryCard("Path To Exile", 4, Edition("CON"), NonFoil),
       InventoryCard("Tarmogoyf", 4, Edition("MM3"), NonFoil)
     )
 
-    printInventory(ui, inventory)
+    val (_, ui, _) = printInventory(inventory)
     ui.stateName should be(UISpec.InventoryExportScreen)
   }
 
   it should "navigate back from submenu to the main menu when selecting Quit from the menu" in {
-    val ui = fsm()
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.Quit, Menu.Nop), List.empty)
+    val (_, ui) = fsm(console)
 
-    ui ! UISpec.Initialize(dummyHandler, console)
     ui ! UISpec.InventoryAvailable
 
     ui.stateName should be(UISpec.InventoryOnlyScreen)
@@ -144,12 +135,11 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "terminate the actor system when quitting from the main menu" in {
     val probe = TestProbe()
-    val ui = fsm()
+    val console = new ConsoleMock(List(Menu.Quit, Menu.Nop), List.empty)
+    val (coreProbe, ui) = fsm(console)
 
     probe.watch(ui)
-    val console = new ConsoleMock(List(Menu.Quit, Menu.Nop), List.empty)
 
-    ui ! UISpec.Initialize(dummyHandler, console)
     ui ! UISpec.InventoryAvailable
 
     probe.expectTerminated(ui)

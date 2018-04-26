@@ -1,36 +1,31 @@
 package vdx.stockpile.cli
 
+import java.io.File
+
 import akka.actor.FSM
+import cats.effect.IO
+import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cli.CoreSpec._
 
-class CoreFSM extends FSM[CoreSpec.State, CoreSpec.Data] {
+class CoreFSM(loadInventory: File => IO[InventoryLoaderResult]) extends FSM[CoreSpec.State, CoreSpec.Data] {
   startWith(Uninitialized, Empty)
 
   private def appendExitHandler(pf: StateFunction): StateFunction =
     pf.orElse({ case Event(Exit, _) => stop() })
 
   when(Uninitialized) {
-    case Event(Initialize(ref, inventoryLoader), Empty) =>
-      goto(Initialized).using(Context(ref, inventoryLoader, None))
-  }
-
-  when(Initialized) {
-    case Event(LoadInventory(file), ctx: Context) =>
-      val (logs, list) = ctx.inventoryLoader(file).unsafeRunSync().run
-      goto(InventoryLoaded).using(ctx.copy(inventory = Option(list)))
+    case Event(LoadInventory(file), Empty) =>
+      val (logs, list) = loadInventory(file).unsafeRunSync().run
+      goto(InventoryLoaded).using(Context(Option(list)))
   }
 
   when(InventoryLoaded)(appendExitHandler {
     case Event(PrintInventory, ctx: Context) =>
-      ctx.ref ! UISpec.WorkerFinished(UISpec.InventoryResult(ctx.inventory.get))
+      context.parent ! UISpec.WorkerFinished(UISpec.InventoryResult(ctx.inventory.get))
       stay()
   })
 
   onTransition {
-    case Initialized -> InventoryLoaded =>
-      stateData match {
-        case ctx: Context =>
-          ctx.ref ! UISpec.InventoryAvailable
-      }
+    case _ -> InventoryLoaded => context.parent ! UISpec.InventoryAvailable
   }
 }

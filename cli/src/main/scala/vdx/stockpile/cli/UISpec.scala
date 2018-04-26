@@ -13,7 +13,6 @@ trait UISpec {
   // State
   sealed trait Screen extends State
   case object Uninitialized extends State
-  case object Initialized extends State
   case object Working extends State
   final case class WorkerFinished(result: WorkerResult) extends State
 
@@ -24,13 +23,11 @@ trait UISpec {
   // Data
   case object Empty extends Data
   final case class Context(
-    console: Console,
-    runAction: PartialFunction[Action, Unit],
     screenStack: List[Screen]
   ) extends Data
 
   // Messages
-  final case class Initialize(actionRunner: PartialFunction[Action, Unit], console: Console) extends Message
+  case object CoreIsReady extends Message
   case object InventoryAvailable extends Message
   case object DrawMenu extends Message
   case object Exit extends Message

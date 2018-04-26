@@ -2,7 +2,7 @@ package vdx.stockpile.cli
 
 import java.io.File
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{TestFSMRef, TestProbe}
 import cats.data.Writer
 import cats.effect.IO
@@ -17,7 +17,8 @@ class CoreFSMSpec extends FlatSpec with Matchers {
 
   implicit val system: ActorSystem = ActorSystem("test")
 
-  def fsm() = TestFSMRef(new CoreFSM)
+  def fsm(inventory: Inventory = CardList.empty[InventoryCard]) =
+    TestFSMRef(new CoreFSM((f: File) => IO({ inventory.pure[Logged] })))
 
   "CoreFSM" should "start in Unintialised state" in {
     val core = fsm()
@@ -26,33 +27,27 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     core.stateData should be(CoreSpec.Empty)
   }
 
-  it should "store ui ref and inventory loader after initialisation" in {
-    val core = fsm()
-    val probe = TestProbe()
+  def loadInventory() = {
+    val inventory = CardList(InventoryCard("Path to Exile", 4, Edition("CON"), NonFoil))
+    val core = fsm(inventory)
 
-    core ! CoreSpec.Initialize(probe.ref, (f: File) => IO({ CardList.empty[InventoryCard].pure[Logged] }))
-
-    core.stateName should be(CoreSpec.Initialized)
+    core ! CoreSpec.LoadInventory(new File(""))
+    (core, inventory)
   }
 
-  it should "load the inventory when it recieves the LoadInventory message and it is initialized" in {
-    val core = fsm()
-    val probe = TestProbe()
-    val inventory = CardList(InventoryCard("Path to Exile", 4, Edition("CON"), NonFoil))
+  it should "load the inventory when it receives the LoadInventory message and it is initialized" in {
+    val (core, inventory) = loadInventory()
 
-    core ! CoreSpec.Initialize(
-      probe.ref,
-      (f: File) =>
-        IO({
-          inventory.pure[Logged]
-        })
-    )
-    core ! CoreSpec.LoadInventory(new File(""))
-
-    core.stateName should be(CoreSpec.InventoryLoaded)
     core.stateData match {
-      case CoreSpec.Context(_, _, Some(i)) => i should equal(inventory)
-      case _                               => fail()
+      case CoreSpec.Context(Some(i)) => i should equal(inventory)
+      case _                         => fail()
     }
   }
+
+  it should "change it state to InventoryLoaded after loading the inventory" in {
+    val (core, _) = loadInventory()
+    core.stateName should be(CoreSpec.InventoryLoaded)
+  }
+
+  ignore should "notify it's parent when the inventory is laoded" in {}
 }

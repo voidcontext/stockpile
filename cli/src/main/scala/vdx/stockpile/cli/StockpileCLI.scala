@@ -2,7 +2,7 @@ package vdx.stockpile.cli
 
 import java.io.File
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorRefFactory, ActorSystem, Props}
 import cats.effect.IO
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cli.console.Terminal
@@ -13,9 +13,6 @@ object StockpileCLI extends App {
 
   val system = ActorSystem()
 
-  val coreFsm = system.actorOf(Props[CoreFSM], "core")
-  val uiFsm = system.actorOf(Props[UIFSM], "ui")
-
   def loadInventoryFromFile: File => IO[InventoryLoaderResult] = (csvFile: File) => {
     new InventoryReaderThroughParserAndCardDBInterpreter[IO](
       new IOCsvParserInterpreter(csvFile),
@@ -23,10 +20,12 @@ object StockpileCLI extends App {
     ).load
   }
 
-  uiFsm ! UISpec.Initialize(
-    { case Menu.InventoryExportTerminal => coreFsm ! CoreSpec.PrintInventory },
-    new Terminal
+  val ui = system.actorOf(
+    Props(
+      classOf[UIFSM],
+      (system: ActorRefFactory) => system.actorOf(Props(classOf[CoreFSM], loadInventoryFromFile)),
+      new Terminal
+    ),
+    "ui"
   )
-  coreFsm ! CoreSpec.Initialize(uiFsm, loadInventoryFromFile)
-  coreFsm ! CoreSpec.LoadInventory(loadLastInventoryFromDownloads())
 }
