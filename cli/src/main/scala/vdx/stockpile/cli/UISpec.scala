@@ -22,7 +22,7 @@ trait UISpec {
 
   // Data
   case object Empty extends Data
-  final case class Context(
+  final case class StateData(
     screenStack: List[Screen]
   ) extends Data
 

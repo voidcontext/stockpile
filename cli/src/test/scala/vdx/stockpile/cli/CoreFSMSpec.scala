@@ -39,8 +39,8 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     val (core, inventory) = loadInventory()
 
     core.stateData match {
-      case CoreSpec.Context(Some(i)) => i should equal(inventory)
-      case _                         => fail()
+      case CoreSpec.StateData(Some(i)) => i should equal(inventory)
+      case _                           => fail()
     }
   }
 

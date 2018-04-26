@@ -16,11 +16,11 @@ class CoreFSM(loadInventory: File => IO[InventoryLoaderResult]) extends FSM[Core
   when(Uninitialized) {
     case Event(LoadInventory(file), Empty) =>
       val (logs, list) = loadInventory(file).unsafeRunSync().run
-      goto(InventoryLoaded).using(Context(Option(list)))
+      goto(InventoryLoaded).using(StateData(Option(list)))
   }
 
   when(InventoryLoaded)(appendExitHandler {
-    case Event(PrintInventory, ctx: Context) =>
+    case Event(PrintInventory, ctx: StateData) =>
       context.parent ! UISpec.WorkerFinished(UISpec.InventoryResult(ctx.inventory.get))
       stay()
   })

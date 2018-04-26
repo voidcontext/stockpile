@@ -16,7 +16,7 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
 
   startWith(Uninitialized, Empty)
 
-  private def defaultHandlers(currentScreen: Screen, context: Context): PartialFunction[MenuItem, State] = {
+  private def defaultHandlers(currentScreen: Screen, context: StateData): PartialFunction[MenuItem, State] = {
     case a: Action =>
       runAction(a)
       enterWorkingState(currentScreen, context)
@@ -33,27 +33,27 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
   private def appendDefaultHandlers(
     handler: PartialFunction[MenuItem, State],
     currentScreen: Screen,
-    context: Context
+    context: StateData
   ) =
     handler.orElse(defaultHandlers(currentScreen, context))
 
-  private def enterSubScreen(screen: Screen, current: Screen, data: Context) =
+  private def enterSubScreen(screen: Screen, current: Screen, data: StateData) =
     goto(screen).using(data.copy(screenStack = current :: data.screenStack))
 
-  private def enterWorkingState(current: Screen, data: Context) =
+  private def enterWorkingState(current: Screen, data: StateData) =
     goto(Working).using(data.copy(screenStack = current :: data.screenStack))
 
-  private def goBack(data: Context) = data match {
-    case Context(head :: tail) => goto(head).using(data.copy(screenStack = tail))
+  private def goBack(data: StateData) = data match {
+    case StateData(head :: tail) => goto(head).using(data.copy(screenStack = tail))
   }
 
   when(Uninitialized) {
     case Event(InventoryAvailable, Empty) =>
-      goto(InventoryOnlyScreen).using(Context(List.empty))
+      goto(InventoryOnlyScreen).using(StateData(List.empty))
   }
 
   when(InventoryOnlyScreen) {
-    case Event(DrawMenu, data: Context) => {
+    case Event(DrawMenu, data: StateData) => {
       console.menu(Menu.main)(
         appendDefaultHandlers(
           {
@@ -68,21 +68,21 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
   }
 
   when(InventoryExportScreen) {
-    case Event(DrawMenu, data: Context) =>
+    case Event(DrawMenu, data: StateData) =>
       console.menu(Menu.export)(defaultHandlers(InventoryExportScreen, data))
   }
 
   when(Working) {
-    case Event(WorkerFinished(r: InventoryResult), data @ Context(head :: tail)) =>
+    case Event(WorkerFinished(r: InventoryResult), data @ StateData(head :: tail)) =>
       r.inventory.toList.foreach(console.println)
       goBack(data)
   }
 
   whenUnhandled {
-    case Event(Exit, data @ Context(head :: tail)) =>
+    case Event(Exit, data @ StateData(head :: tail)) =>
       println(" ---> Exit: back")
       goBack(data)
-    case Event(Exit, data: Context) =>
+    case Event(Exit, data: StateData) =>
       println(data)
       println(" ---> Exit: exit")
       context.system.terminate()

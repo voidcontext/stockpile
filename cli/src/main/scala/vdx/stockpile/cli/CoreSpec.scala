@@ -16,7 +16,7 @@ trait CoreSpec {
   case object InventoryLoaded extends State
 
   case object Empty extends Data
-  final case class Context(
+  final case class StateData(
     inventory: Option[Inventory]
   ) extends Data
 
