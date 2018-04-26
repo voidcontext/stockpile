@@ -25,12 +25,12 @@ trait UISpec {
   case object Empty extends Data
   final case class Context(
     console: Console,
-    actionRunner: PartialFunction[MenuItem, Unit],
+    runAction: PartialFunction[Action, Unit],
     screenStack: List[Screen]
   ) extends Data
 
   // Messages
-  final case class Initialize(actionRunner: PartialFunction[MenuItem, Unit], console: Console) extends Message
+  final case class Initialize(actionRunner: PartialFunction[Action, Unit], console: Console) extends Message
   case object InventoryAvailable extends Message
   case object DrawMenu extends Message
   case object Exit extends Message

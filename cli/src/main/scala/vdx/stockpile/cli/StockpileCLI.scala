@@ -4,14 +4,9 @@ import java.io.File
 
 import akka.actor.{ActorSystem, Props}
 import cats.effect.IO
-import kantan.csv.ReadResult
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cli.console.Terminal
-import vdx.stockpile.inventory.format.deckbox.{
-  CsvParserAlg,
-  InventoryReaderThroughParserAndCardDBInterpreter,
-  RawDeckboxCard
-}
+import vdx.stockpile.inventory.format.deckbox.{IOCsvParserInterpreter, InventoryReaderThroughParserAndCardDBInterpreter}
 import vdx.stockpile.mgjson.MtgJsonDBInterpreter
 
 object StockpileCLI extends App {
@@ -21,17 +16,10 @@ object StockpileCLI extends App {
   val coreFsm = system.actorOf(Props[CoreFSM], "core")
   val uiFsm = system.actorOf(Props[UIFSM], "ui")
 
-  val db = new MtgJsonDBInterpreter {}
-
-  def inventoryLoader: File => IO[InventoryLoaderResult] = (csvFile: File) => {
-    val parser = new CsvParserAlg[IO] {
-      override def file: File = csvFile
-      override def parse(): IO[List[ReadResult[RawDeckboxCard]]] = IO({ parseRaw() })
-    }
-
+  def loadInventoryFromFile: File => IO[InventoryLoaderResult] = (csvFile: File) => {
     new InventoryReaderThroughParserAndCardDBInterpreter[IO](
-      parser,
-      db
+      new IOCsvParserInterpreter(csvFile),
+      new MtgJsonDBInterpreter {}
     ).load
   }
 
@@ -39,6 +27,6 @@ object StockpileCLI extends App {
     { case Menu.InventoryExportTerminal => coreFsm ! CoreSpec.PrintInventory },
     new Terminal
   )
-  coreFsm ! CoreSpec.Initialize(uiFsm, inventoryLoader)
+  coreFsm ! CoreSpec.Initialize(uiFsm, loadInventoryFromFile)
   coreFsm ! CoreSpec.LoadInventory(loadLastInventoryFromDownloads())
 }

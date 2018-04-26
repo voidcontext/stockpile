@@ -8,7 +8,7 @@ class UIFSM extends FSM[State, Data] {
 
   private def defaultHandlers(currentScreen: Screen, context: Context): PartialFunction[MenuItem, State] = {
     case a: Action =>
-      context.actionRunner(a)
+      context.runAction(a)
       enterWorkingState(currentScreen, context)
     case Menu.Nop =>
       stay()

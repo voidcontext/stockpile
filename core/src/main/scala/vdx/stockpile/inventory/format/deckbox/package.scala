@@ -5,6 +5,7 @@ import java.io.File
 import cats.Monad
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, Writer}
+import cats.effect.IO
 import cats.syntax.writer
 import cats.implicits._
 import kantan.csv.ops._
@@ -36,6 +37,10 @@ package object deckbox {
     def file: File
 
     def parse(): F[List[ReadResult[RawDeckboxCard]]]
+  }
+
+  class IOCsvParserInterpreter(val file: File) extends CsvParserAlg[IO] {
+    override def parse(): IO[List[ReadResult[RawDeckboxCard]]] = IO({ parseRaw() })
   }
 
   class InventoryReaderThroughParserAndCardDBInterpreter[F[_]: Monad](
