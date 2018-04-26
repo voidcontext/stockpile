@@ -7,8 +7,8 @@ import akka.testkit.{TestFSMRef, TestProbe}
 import cats.data.Writer
 import cats.effect.IO
 import org.scalatest.{FlatSpec, Matchers}
-import vdx.stockpile.Card.InventoryCard
-import vdx.stockpile.CardList
+import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
+import vdx.stockpile.{CardList, Inventory}
 import vdx.stockpile.Inventory.InventoryLoaderLog
 import cats.implicits._
 
@@ -33,5 +33,26 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     core ! CoreSpec.Initialize(probe.ref, (f: File) => IO({ CardList.empty[InventoryCard].pure[Logged] }))
 
     core.stateName should be(CoreSpec.Initialized)
+  }
+
+  it should "load the inventory when it recieves the LoadInventory message and it is initialized" in {
+    val core = fsm()
+    val probe = TestProbe()
+    val inventory = CardList(InventoryCard("Path to Exile", 4, Edition("CON"), NonFoil))
+
+    core ! CoreSpec.Initialize(
+      probe.ref,
+      (f: File) =>
+        IO({
+          inventory.pure[Logged]
+        })
+    )
+    core ! CoreSpec.LoadInventory(new File(""))
+
+    core.stateName should be(CoreSpec.InventoryLoaded)
+    core.stateData match {
+      case CoreSpec.Context(_, _, Some(i)) => i should equal(inventory)
+      case _                               => fail()
+    }
   }
 }
