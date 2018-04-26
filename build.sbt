@@ -33,6 +33,7 @@ lazy val root = (project in file("."))
     bintrayEnsureBintrayPackageExists := (),
     bintrayEnsureLicenses := ()
   )
+  .aggregate(core, cli)
 
 
 val circeVersion = "0.9.3"
@@ -62,6 +63,8 @@ lazy val cli = module("cli")
   .settings(
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
+
       "org.typelevel" %% "cats-core" % catsVersion,
       "org.typelevel" %% "cats-effect" % catsEffectVersion,
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,

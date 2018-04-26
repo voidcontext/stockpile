@@ -19,7 +19,7 @@ object StockpileCLI extends App {
   val system = ActorSystem()
 
   val coreFsm = system.actorOf(Props[CoreFSM], "core")
-  val uiFsm = system.actorOf(Props[UIFSM], "uicl")
+  val uiFsm = system.actorOf(Props[UIFSM], "ui")
 
   val db = new MtgJsonDBInterpreter {}
 

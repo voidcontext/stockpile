@@ -1,10 +1,13 @@
 package vdx.stockpile.cli
 
 package object console {
+
   trait Console {
     def menu[A](menu: Menu)(selectedHandler: MenuItem => A): A
 
     def readLine(prompt: String = ""): String
+
+    def println(x: Any): Unit
   }
 
   class Terminal extends Console {
@@ -19,5 +22,7 @@ package object console {
     }
 
     override def readLine(prompt: String = ""): String = scala.io.StdIn.readLine(prompt)
+
+    override def println(x: Any): Unit = scala.Predef.println(x)
   }
 }

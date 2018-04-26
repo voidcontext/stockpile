@@ -11,8 +11,8 @@ sealed trait Card[A <: Card[A]] { self: A =>
 object Card {
   sealed trait FoilState
 
-  final case object Foil extends FoilState
-  final case object NonFoil extends FoilState
+  case object Foil extends FoilState
+  case object NonFoil extends FoilState
 
   final case class Edition(code: String)
 

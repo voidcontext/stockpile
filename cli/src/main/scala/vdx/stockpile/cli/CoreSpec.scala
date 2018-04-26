@@ -17,11 +17,14 @@ trait CoreSpec {
   case object InventoryLoaded extends State
 
   case object Empty extends Data
-  case class Context(ref: ActorRef, inventoryLoader: File => IO[InventoryLoaderResult], inventory: Option[Inventory])
-      extends Data
+  final case class Context(
+    ref: ActorRef,
+    inventoryLoader: File => IO[InventoryLoaderResult],
+    inventory: Option[Inventory]
+  ) extends Data
 
-  case class LoadInventory(file: File) extends Message
-  case class Initialize(ref: ActorRef, inventoryLoader: File => IO[InventoryLoaderResult])
+  final case class LoadInventory(file: File) extends Message
+  final case class Initialize(ref: ActorRef, inventoryLoader: File => IO[InventoryLoaderResult])
   case object PrintInventory extends Message
   case object Exit extends Message
 }

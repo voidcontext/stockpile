@@ -65,7 +65,7 @@ class UIFSM extends FSM[State, Data] {
 
   when(Working) {
     case Event(WorkerFinished(r: InventoryResult), data @ Context(_, _, head :: tail)) =>
-      r.inventory.toList.foreach(println)
+      r.inventory.toList.foreach(data.console.println)
       goBack(data)
   }
 
