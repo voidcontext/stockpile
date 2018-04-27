@@ -2,23 +2,29 @@ package vdx.stockpile.cli
 
 import java.io.File
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestFSMRef, TestProbe}
 import cats.data.Writer
 import cats.effect.IO
+import cats.implicits._
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
-import vdx.stockpile.{CardList, Inventory}
 import vdx.stockpile.Inventory.InventoryLoaderLog
-import cats.implicits._
+import vdx.stockpile.cli.UISpec.WorkerFinished
+import vdx.stockpile.{CardList, Inventory}
+
+import scala.concurrent.duration._
 
 class CoreFSMSpec extends FlatSpec with Matchers {
   private type Logged[A] = Writer[Vector[InventoryLoaderLog], A]
 
   implicit val system: ActorSystem = ActorSystem("test")
 
+  def defaultLoader(inventory: Inventory = CardList.empty[InventoryCard]) =
+    (f: File) => IO({ inventory.pure[Logged] })
+
   def fsm(inventory: Inventory = CardList.empty[InventoryCard]) =
-    TestFSMRef(new CoreFSM((f: File) => IO({ inventory.pure[Logged] })))
+    TestFSMRef(new CoreFSM(defaultLoader(inventory)))
 
   "CoreFSM" should "start in Unintialised state" in {
     val core = fsm()
@@ -49,5 +55,15 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     core.stateName should be(CoreSpec.InventoryLoaded)
   }
 
-  ignore should "notify it's parent when the inventory is laoded" in {}
+  it should "notify it's parent when the inventory is loaded" in {
+    val parent = TestProbe()
+    val core = parent.childActorOf(Props(classOf[CoreFSM], defaultLoader()))
+    parent.send(core, CoreSpec.LoadInventory(new File("")))
+    parent.send(core, CoreSpec.PrintInventory)
+
+    parent.fishForMessage(1.second, "") {
+      case WorkerFinished(UISpec.InventoryResult(i)) => true
+      case _                                         => false
+    } shouldBe an[WorkerFinished]
+  }
 }
