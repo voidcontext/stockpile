@@ -1,6 +1,6 @@
 package vdx.stockpile.cli
 
-import vdx.stockpile.Inventory.InventoryLoaderLog
+import vdx.stockpile.Inventory.InventoryLog
 
 trait UISpec {
   sealed trait State
@@ -28,7 +28,7 @@ trait UISpec {
 
   // Messages
   case object CoreIsReady extends Message
-  final case class InventoryAvailable(logs: Seq[InventoryLoaderLog]) extends Message
+  final case class InventoryAvailable(logs: Seq[InventoryLog]) extends Message
   case object DrawMenu extends Message
   case object Exit extends Message
 }

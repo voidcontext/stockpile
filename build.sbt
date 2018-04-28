@@ -8,6 +8,7 @@ val defaultSettings = Seq(
   scalacOptions in ThisBuild ++= Seq(
     "-language:higherKinds",
     "-deprecation",
+    "-unchecked",
     "-feature",
   ),
 )

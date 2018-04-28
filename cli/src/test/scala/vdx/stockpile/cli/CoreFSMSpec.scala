@@ -9,14 +9,14 @@ import cats.effect.IO
 import cats.implicits._
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
-import vdx.stockpile.Inventory.{InventoryError, InventoryLoaderLog}
+import vdx.stockpile.Inventory.{InventoryError, InventoryLog}
 import vdx.stockpile.cli.UISpec.WorkerFinished
 import vdx.stockpile.{CardList, Inventory}
 
 import scala.concurrent.duration._
 
 class CoreFSMSpec extends FlatSpec with Matchers {
-  private type Logged[A] = Writer[Vector[InventoryLoaderLog], A]
+  private type Logged[A] = Writer[Vector[InventoryLog], A]
 
   implicit val system: ActorSystem = ActorSystem("test")
 

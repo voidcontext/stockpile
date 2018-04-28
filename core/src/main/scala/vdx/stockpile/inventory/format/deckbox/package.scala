@@ -49,10 +49,10 @@ package object deckbox {
   ) extends InventoryLoaderAlg[F] {
 
     private type CSVResult = ReadResult[RawDeckboxCard]
-    private type ValidatedResult = Validated[InventoryLoaderLog, RawDeckboxCard]
-    private type Logged[A] = Writer[Vector[InventoryLoaderLog], A]
+    private type ValidatedResult = Validated[InventoryLog, RawDeckboxCard]
+    private type Logged[A] = Writer[Vector[InventoryLog], A]
 
-    override def load: F[Writer[Vector[InventoryLoaderLog], Inventory]] = {
+    override def load: F[Writer[Vector[InventoryLog], Inventory]] = {
       def foil: PartialFunction[Option[String], FoilState] = {
         case Some("foil") => Foil
         case _            => NonFoil
@@ -66,7 +66,7 @@ package object deckbox {
               case None            => Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
             })
         case Left(error) =>
-          Validated.invalid[InventoryLoaderLog, RawDeckboxCard](InventoryError(error.getMessage)).pure[F]
+          Validated.invalid[InventoryLog, RawDeckboxCard](InventoryError(error.getMessage)).pure[F]
       }
 
       def appendRawCardToList(inventory: Inventory, card: RawDeckboxCard) =
