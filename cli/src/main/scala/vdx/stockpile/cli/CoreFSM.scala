@@ -13,10 +13,15 @@ class CoreFSM(loadInventory: File => IO[InventoryLoaderResult]) extends FSM[Core
   private def appendExitHandler(pf: StateFunction): StateFunction =
     pf.orElse({ case Event(Exit, _) => stop() })
 
+  private def load(file: File) = {
+    val (logs, inventory) = loadInventory(file).unsafeRunSync().run
+    context.parent ! UISpec.InventoryAvailable(logs)
+    inventory
+  }
+
   when(Uninitialized) {
     case Event(LoadInventory(file), Empty) =>
-      val (logs, list) = loadInventory(file).unsafeRunSync().run
-      goto(InventoryLoaded).using(StateData(Option(list)))
+      goto(InventoryLoaded).using(StateData(Option(load(file))))
   }
 
   when(InventoryLoaded)(appendExitHandler {
@@ -24,8 +29,4 @@ class CoreFSM(loadInventory: File => IO[InventoryLoaderResult]) extends FSM[Core
       context.parent ! UISpec.WorkerFinished(UISpec.InventoryResult(ctx.inventory.get))
       stay()
   })
-
-  onTransition {
-    case _ -> InventoryLoaded => context.parent ! UISpec.InventoryAvailable
-  }
 }

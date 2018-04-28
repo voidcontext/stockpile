@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorSystem, PoisonPill, Props}
 import akka.testkit.{TestFSMRef, TestProbe}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
+import vdx.stockpile.Inventory.InventoryError
 import vdx.stockpile.{CardList, Inventory}
 import vdx.stockpile.cli.console.Console
 import vdx.stockpile.instances.eq._
@@ -62,16 +63,29 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val console = new ConsoleMock(List(Menu.Nop), List.empty)
     val (probe, ui) = fsm(console)
 
-    ui ! UISpec.InventoryAvailable
+    ui ! UISpec.InventoryAvailable(List.empty)
 
     ui.stateName should be(UISpec.InventoryOnlyScreen)
+  }
+
+  it should "process logs from the inventory load" in {
+    val console = new ConsoleMock(List(Menu.Nop), List.empty)
+    val (probe, ui) = fsm(console)
+    val logs = Vector(
+      InventoryError("Warning 1"),
+      InventoryError("Warning 2")
+    )
+
+    ui ! UISpec.InventoryAvailable(logs)
+
+    console.printedLines should equal(logs.map(_.message))
   }
 
   it should "enter into the selected submenu" in {
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.Nop), List.empty)
     val (probe, ui) = fsm(console)
 
-    ui ! UISpec.InventoryAvailable
+    ui ! UISpec.InventoryAvailable(Vector.empty)
 
     ui.stateName should be(UISpec.InventoryExportScreen)
     console.displayedMenus(1) should equal(Menu.export)
@@ -81,7 +95,7 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.InventoryExportTerminal), List.empty)
     val (probe, ui) = fsm(console)
 
-    ui ! UISpec.InventoryAvailable
+    ui ! UISpec.InventoryAvailable(Vector.empty)
 
     ui.stateName should be(UISpec.Working)
   }
@@ -90,7 +104,7 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.InventoryExportTerminal, Menu.Nop), List.empty)
     val (probe, ui) = fsm(console)
 
-    ui ! UISpec.InventoryAvailable
+    ui ! UISpec.InventoryAvailable(Vector.empty)
 
     ui.stateName should be(UISpec.Working)
 
@@ -128,7 +142,7 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.Quit, Menu.Nop), List.empty)
     val (_, ui) = fsm(console)
 
-    ui ! UISpec.InventoryAvailable
+    ui ! UISpec.InventoryAvailable(Vector.empty)
 
     ui.stateName should be(UISpec.InventoryOnlyScreen)
   }
@@ -140,7 +154,7 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     probe.watch(ui)
 
-    ui ! UISpec.InventoryAvailable
+    ui ! UISpec.InventoryAvailable(Vector.empty)
 
     probe.expectTerminated(ui)
     Await.ready(system.whenTerminated, 1.minutes)

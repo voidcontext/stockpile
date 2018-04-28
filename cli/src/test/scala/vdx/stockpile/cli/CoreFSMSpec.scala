@@ -9,7 +9,7 @@ import cats.effect.IO
 import cats.implicits._
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
-import vdx.stockpile.Inventory.InventoryLoaderLog
+import vdx.stockpile.Inventory.{InventoryError, InventoryLoaderLog}
 import vdx.stockpile.cli.UISpec.WorkerFinished
 import vdx.stockpile.{CardList, Inventory}
 
@@ -50,12 +50,28 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     }
   }
 
+  it should "notify it's parent when the inventory is loaded" in {
+    val parent = TestProbe()
+    val logs = Vector(InventoryError("Warning 1"), InventoryError("Warning 2"))
+    val core =
+      parent.childActorOf(Props(classOf[CoreFSM], (f: File) => IO({ CardList.empty[InventoryCard].writer(logs) })))
+    parent.send(core, CoreSpec.LoadInventory(new File("")))
+
+    parent.fishForMessage(1.second, "") {
+      case UISpec.InventoryAvailable(_) => true
+      case _                            => false
+    } match {
+      case UISpec.InventoryAvailable(l) => l should equal(logs)
+      case _                            => fail()
+    }
+  }
+
   it should "change it state to InventoryLoaded after loading the inventory" in {
     val (core, _) = loadInventory()
     core.stateName should be(CoreSpec.InventoryLoaded)
   }
 
-  it should "notify it's parent when the inventory is loaded" in {
+  it should "notify it's parent when a result is available" in {
     val parent = TestProbe()
     val core = parent.childActorOf(Props(classOf[CoreFSM], defaultLoader()))
     parent.send(core, CoreSpec.LoadInventory(new File("")))

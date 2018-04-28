@@ -48,7 +48,8 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
   }
 
   when(Uninitialized) {
-    case Event(InventoryAvailable, Empty) =>
+    case Event(InventoryAvailable(logs), Empty) =>
+      logs.foreach(log => console.println(log.message))
       goto(InventoryOnlyScreen).using(StateData(List.empty))
   }
 
