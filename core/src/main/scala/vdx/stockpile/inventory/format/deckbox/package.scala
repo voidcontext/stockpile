@@ -11,7 +11,7 @@ import cats.implicits._
 import kantan.csv.ops._
 import kantan.csv.{ReadResult, RowDecoder, rfc}
 import vdx.stockpile.Card._
-import vdx.stockpile.CardDB.RepositoryAlg
+import vdx.stockpile.CardDB.{RepositoryAlg, SimpleSet}
 import vdx.stockpile.Inventory._
 import vdx.stockpile.instances.eq._
 import vdx.stockpile.{CardList, Inventory}
@@ -49,30 +49,35 @@ package object deckbox {
   ) extends InventoryLoaderAlg[F] {
 
     private type CSVResult = ReadResult[RawDeckboxCard]
-    private type ValidatedResult = Validated[InventoryLog, RawDeckboxCard]
+    private type ValidatedResult = Validated[InventoryLog, (RawDeckboxCard, SimpleSet)]
     private type Logged[A] = Writer[Vector[InventoryLog], A]
 
     override def load: F[Writer[Vector[InventoryLog], Inventory]] = {
-      def foil: PartialFunction[Option[String], FoilState] = {
-        case Some("foil") => Foil
-        case _            => NonFoil
+      val prereleaseRegex = """^Prerelease Events: """.r
+      def foil: PartialFunction[(Option[String], String), FoilState] = {
+        case (_, edition) if prereleaseRegex.findFirstIn(edition).isDefined => PreReleaseFoil
+        case (Some("foil"), _)                                              => Foil
+        case _                                                              => NonFoil
       }
+
+      def unwrapEdition(editionName: String) =
+        editionName.replaceFirst("Prerelease Events: ", "")
 
       def mapEditionAndValidate: PartialFunction[CSVResult, F[ValidatedResult]] = {
         case Right(card) =>
-          db.findSimpleSetByName(card.edition)
+          db.findSimpleSetByName(unwrapEdition(card.edition))
             .map({
-              case Some(simpleSet) => Valid(card.copy(edition = simpleSet.code))
+              case Some(simpleSet) => Valid((card, simpleSet))
               case None            => Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
             })
         case Left(error) =>
-          Validated.invalid[InventoryLog, RawDeckboxCard](InventoryError(error.getMessage)).pure[F]
+          Validated.invalid[InventoryLog, (RawDeckboxCard, SimpleSet)](InventoryError(error.getMessage)).pure[F]
       }
 
-      def appendRawCardToList(inventory: Inventory, card: RawDeckboxCard) =
+      def appendRawCardToList(inventory: Inventory, card: RawDeckboxCard, set: SimpleSet) =
         inventory.combine(
           CardList(
-            InventoryCard(card.name, card.count, Edition(card.edition), foil(card.foil))
+            InventoryCard(card.name, card.count, Edition(set.code), foil(card.foil, card.edition))
           )
         )
 
@@ -80,8 +85,8 @@ package object deckbox {
         result.foldLeft(
           CardList.empty[InventoryCard].pure[Logged]
         ) {
-          case (w, Valid(card)) =>
-            w.map(appendRawCardToList(_, card))
+          case (w, Valid((card, set))) =>
+            w.map(appendRawCardToList(_, card, set))
           case (w, Invalid(error)) =>
             w.tell(Vector(error))
         }

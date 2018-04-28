@@ -13,6 +13,7 @@ object Card {
 
   case object Foil extends FoilState
   case object NonFoil extends FoilState
+  case object PreReleaseFoil extends FoilState
 
   final case class Edition(code: String)
 
