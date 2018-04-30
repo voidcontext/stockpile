@@ -38,7 +38,7 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     override def println(x: Any): Unit = printedLines = printedLines :+ x.toString
   }
 
-  private def fsm(console: Console = new ConsoleMock()) = {
+  private def fsm(console: Console = new ConsoleMock())(implicit system: ActorSystem) = {
     val probe = TestProbe()
     (probe, TestFSMRef(new UIFSM(_ => probe.ref, console)))
   }
@@ -79,16 +79,6 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     ui ! UISpec.InventoryAvailable(logs)
 
     console.printedLines should equal(logs.map(_.message))
-  }
-
-  it should "enter into the selected submenu" in {
-    val console = new ConsoleMock(List(Menu.InventoryExport, Menu.Nop), List.empty)
-    val (probe, ui) = fsm(console)
-
-    ui ! UISpec.InventoryAvailable(Vector.empty)
-
-    ui.stateName should be(UISpec.InventoryExportScreen)
-    console.displayedMenus(1) should equal(Menu.export)
   }
 
   it should "enter into Working state when running an action in a submenu" in {
@@ -148,15 +138,44 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   it should "terminate the actor system when quitting from the main menu" in {
-    val probe = TestProbe()
+    implicit val systemToTerminate = ActorSystem("test-to-terminate")
+    val probe = TestProbe()(systemToTerminate)
     val console = new ConsoleMock(List(Menu.Quit, Menu.Nop), List.empty)
-    val (coreProbe, ui) = fsm(console)
+    val (coreProbe, ui) = fsm(console)(systemToTerminate)
 
     probe.watch(ui)
 
     ui ! UISpec.InventoryAvailable(Vector.empty)
 
     probe.expectTerminated(ui)
-    Await.ready(system.whenTerminated, 1.minutes)
+    Await.ready(systemToTerminate.whenTerminated, 1.minutes)
   }
+
+  "UIFSM :: InventoryExport" should "enter into the selected submenu" in {
+    val console = new ConsoleMock(List(Menu.InventoryExport, Menu.Nop), List.empty)
+    val (probe, ui) = fsm(console)
+
+    ui ! UISpec.InventoryAvailable(Vector.empty)
+
+    ui.stateName should be(UISpec.InventoryExportScreen)
+    console.displayedMenus(1) should equal(Menu.export)
+  }
+
+  "UIFSM :: LoadDecksFromDir" should "enter into the selected submenu" in {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List.empty)
+    val (probe, ui) = fsm(console)
+
+    ui ! UISpec.InventoryAvailable(Vector.empty)
+
+    ui.stateName should be(UISpec.DeckLoadedScreen)
+  }
+
+  it should "display the deck menu" in {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List.empty)
+    val (probe, ui) = fsm(console)
+
+    ui ! UISpec.InventoryAvailable(Vector.empty)
+    console.displayedMenus(1) should equal(Menu.decks)
+  }
+
 }

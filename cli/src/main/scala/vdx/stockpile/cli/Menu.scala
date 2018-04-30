@@ -32,9 +32,12 @@ object Menu {
     override def label: String = "Print to screen"
   }
 
+  case object LoadDecksFromDir extends MenuItem { override def label: String = "Load Decks from directory" }
+
   val main = apply(
     List(
       InventoryExport,
+      LoadDecksFromDir,
       Quit,
     )
   )
@@ -43,6 +46,12 @@ object Menu {
     List(
       InventoryExportTerminal,
       Quit,
+    )
+  )
+
+  val decks = apply(
+    List(
+      Quit
     )
   )
 }

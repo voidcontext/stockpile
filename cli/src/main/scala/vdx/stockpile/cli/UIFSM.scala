@@ -60,6 +60,8 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
           {
             case Menu.InventoryExport =>
               enterSubScreen(InventoryExportScreen, InventoryOnlyScreen, data)
+            case Menu.LoadDecksFromDir =>
+              enterSubScreen(DeckLoadedScreen, InventoryOnlyScreen, data)
           },
           InventoryOnlyScreen,
           data
@@ -71,6 +73,11 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
   when(InventoryExportScreen) {
     case Event(DrawMenu, data: StateData) =>
       console.menu(Menu.export)(defaultHandlers(InventoryExportScreen, data))
+  }
+
+  when(DeckLoadedScreen) {
+    case Event(DrawMenu, data: StateData) =>
+      console.menu(Menu.decks)(defaultHandlers(DeckLoadedScreen, data))
   }
 
   when(Working) {

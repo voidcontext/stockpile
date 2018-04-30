@@ -19,6 +19,7 @@ trait UISpec {
   // Screens
   case object InventoryOnlyScreen extends Screen
   case object InventoryExportScreen extends Screen
+  case object DeckLoadedScreen extends Screen
 
   // Data
   case object Empty extends Data
