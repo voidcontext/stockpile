@@ -1,16 +1,19 @@
 package vdx.stockpile.cli
 
-import akka.actor.{ActorRef, ActorSystem, PoisonPill, Props}
+import java.io.File
+
+import akka.actor.ActorSystem
 import akka.testkit.{TestFSMRef, TestProbe}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Inventory.InventoryError
-import vdx.stockpile.{CardList, Inventory}
+import vdx.stockpile.cli.UISpec.DecksAreLoaded
 import vdx.stockpile.cli.console.Console
 import vdx.stockpile.instances.eq._
+import vdx.stockpile.{CardList, Inventory}
 
-import scala.concurrent.duration._
 import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   implicit val system: ActorSystem = ActorSystem("test")
@@ -161,20 +164,52 @@ class UIFSMSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     console.displayedMenus(1) should equal(Menu.export)
   }
 
-  "UIFSM :: LoadDecksFromDir" should "enter into the selected submenu" in {
-    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List.empty)
-    val (probe, ui) = fsm(console)
+  "UIFSM :: LoadDecksFromDir" should "ask for the directory where to load the decks from" in {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List("decks"))
+    val (_, ui) = fsm(console)
 
     ui ! UISpec.InventoryAvailable(Vector.empty)
+
+    console.inputs shouldBe empty
+  }
+
+  it should "hand over the work to the core" in {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List("decks"))
+    val (coreProbe, ui) = fsm(console)
+
+    ui ! UISpec.InventoryAvailable(Vector.empty)
+
+    coreProbe.fishForMessage(1.second, "") {
+      case CoreSpec.LoadDecks(_) => true
+      case _                     => false
+    } should equal(CoreSpec.LoadDecks(new File("decks")))
+  }
+
+  it should "enter into working mode" in {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List("decks"))
+    val (_, ui) = fsm(console)
+
+    ui ! UISpec.InventoryAvailable(Vector.empty)
+
+    ui.stateName should be(UISpec.Working)
+  }
+
+  it should "enter into the selected submenu after the decks are loaded into core" in {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List("decks"))
+    val (_, ui) = fsm(console)
+
+    ui ! UISpec.InventoryAvailable(Vector.empty)
+    ui ! UISpec.WorkerFinished(DecksAreLoaded)
 
     ui.stateName should be(UISpec.DeckLoadedScreen)
   }
 
   it should "display the deck menu" in {
-    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List.empty)
-    val (probe, ui) = fsm(console)
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List("decks"))
+    val (_, ui) = fsm(console)
 
     ui ! UISpec.InventoryAvailable(Vector.empty)
+    ui ! UISpec.WorkerFinished(DecksAreLoaded)
     console.displayedMenus(1) should equal(Menu.decks)
   }
 

@@ -1,6 +1,8 @@
 package vdx.stockpile.cli
 
-import akka.actor.{ActorRef, ActorRefFactory, FSM, Props}
+import java.io.File
+
+import akka.actor.{ActorRef, ActorRefFactory, FSM}
 import vdx.stockpile.cli.UISpec._
 import vdx.stockpile.cli.console.Console
 
@@ -61,7 +63,10 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
             case Menu.InventoryExport =>
               enterSubScreen(InventoryExportScreen, InventoryOnlyScreen, data)
             case Menu.LoadDecksFromDir =>
-              enterSubScreen(DeckLoadedScreen, InventoryOnlyScreen, data)
+              val dir = console.readLine("Deck dir: ")
+              core ! CoreSpec.LoadDecks(new File(dir))
+              enterWorkingState(InventoryOnlyScreen, data)
+//              enterSubScreen(DeckLoadedScreen, InventoryOnlyScreen, data)
           },
           InventoryOnlyScreen,
           data
@@ -84,6 +89,8 @@ class UIFSM(childFactory: ActorRefFactory => ActorRef, console: Console) extends
     case Event(WorkerFinished(r: InventoryResult), data @ StateData(head :: tail)) =>
       r.inventory.toList.foreach(console.println)
       goBack(data)
+    case Event(WorkerFinished(DecksAreLoaded), data @ StateData(head :: tail)) =>
+      goto(DeckLoadedScreen).using(data)
   }
 
   whenUnhandled {

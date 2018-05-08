@@ -8,7 +8,9 @@ trait UISpec {
   sealed trait Message
   sealed trait WorkerResult
 
+  // Worker Results
   final case class InventoryResult(inventory: vdx.stockpile.Inventory) extends WorkerResult
+  case object DecksAreLoaded extends WorkerResult
 
   // State
   sealed trait Screen extends State
