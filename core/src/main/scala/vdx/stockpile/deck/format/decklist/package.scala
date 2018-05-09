@@ -45,9 +45,11 @@ package object decklist {
                 case Some(regexMatch) =>
                   w.map(
                     deck =>
-                      if (count(deck.mainBoard) < 60)
+                      if (count(deck.mainBoard) < 60) {
                         deck.copy(mainBoard = deck.mainBoard.combine(CardList(matchesToCard(regexMatch))))
-                      else deck.copy(sideBoard = deck.sideBoard.combine(CardList(matchesToCard(regexMatch))))
+                      } else {
+                        deck.copy(sideBoard = deck.sideBoard.combine(CardList(matchesToCard(regexMatch))))
+                    }
                   )
                 case None =>
                   w.tell(Vector(ParserError(s"Cannot parse line: $line")))

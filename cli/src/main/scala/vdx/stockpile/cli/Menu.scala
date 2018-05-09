@@ -2,19 +2,21 @@ package vdx.stockpile.cli
 
 case class Menu(actions: List[MenuItem]) {
   def asStrings: List[String] =
-    indexed.map({
+    indexed.map {
       case (action, index) => "[" + actionKey(action, index) + "] " + action.label
-    })
+    }
 
   private def indexed = actions.zipWithIndex
 
   private def actionKey(action: MenuItem, index: Int): String = action.key.getOrElse(index + 1).toString
 
   def isValidKey(key: String): Boolean =
-    indexed.map({ case (action, index) => actionKey(action, index) }).contains(key)
+    indexed
+      .map { case (action, index) => actionKey(action, index) }
+      .contains(key)
 
   def action(key: String): MenuItem =
-    indexed.filter({ case (action, index) => actionKey(action, index) == key }).map(_._1).head
+    indexed.collect { case (action, index) if actionKey(action, index) == key => action }.head
 }
 
 object Menu {
@@ -38,14 +40,14 @@ object Menu {
     List(
       InventoryExport,
       LoadDecksFromDir,
-      Quit,
+      Quit
     )
   )
 
   val export = apply(
     List(
       InventoryExportTerminal,
-      Quit,
+      Quit
     )
   )
 

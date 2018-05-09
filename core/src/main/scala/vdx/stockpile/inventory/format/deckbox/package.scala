@@ -27,8 +27,24 @@ package object deckbox {
     foil: Option[String]
   )
 
+  private val ColumnCount = 0
+  private val ColumnName = 2
+  private val ColumnEdition = 3
+  private val ColumnCardNumber = 4
+  private val ColumnCondition = 5
+  private val ColumnLanguage = 6
+  private val ColumnFoil = 7
+
   private[deckbox] implicit val cardDecoder: RowDecoder[RawDeckboxCard] =
-    RowDecoder.decoder(0, 2, 3, 4, 5, 6, 7)(RawDeckboxCard.apply)
+    RowDecoder.decoder(
+      ColumnCount,
+      ColumnName,
+      ColumnEdition,
+      ColumnCardNumber,
+      ColumnCondition,
+      ColumnLanguage,
+      ColumnFoil
+    )(RawDeckboxCard.apply)
 
   trait CsvParserAlg[F[_]] {
     protected def parseRaw(): List[ReadResult[RawDeckboxCard]] =
@@ -66,10 +82,10 @@ package object deckbox {
       def mapEditionAndValidate: PartialFunction[CSVResult, F[ValidatedResult]] = {
         case Right(card) =>
           db.findSimpleSetByName(unwrapEdition(card.edition))
-            .map({
+            .map {
               case Some(simpleSet) => Valid((card, simpleSet))
               case None            => Invalid(InventoryError(s"Cannot find set for ${card.toString}"))
-            })
+            }
         case Left(error) =>
           Validated.invalid[InventoryLog, (RawDeckboxCard, SimpleSet)](InventoryError(error.getMessage)).pure[F]
       }
