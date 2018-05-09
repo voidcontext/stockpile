@@ -11,14 +11,14 @@ import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
 import vdx.stockpile.Inventory.{InventoryError, InventoryLog}
-import vdx.stockpile.cli.CoreSpec.FileDeckLoader
-import vdx.stockpile.cli.UISpec.WorkerFinished
+import vdx.stockpile.cli.Core.FileDeckLoader
+import vdx.stockpile.cli.UI.WorkerFinished
 import vdx.stockpile.instances.eq._
 import vdx.stockpile.{CardList, Deck, Inventory}
 
 import scala.concurrent.duration._
 
-class CoreFSMSpec extends FlatSpec with Matchers {
+class CoreSpec extends FlatSpec with Matchers {
   private type LoggedInventory[A] = Writer[Vector[InventoryLog], A]
   private type LoggedDeck[A] = Writer[Vector[DeckLog], A]
 
@@ -41,7 +41,7 @@ class CoreFSMSpec extends FlatSpec with Matchers {
 
   def fsm(inventory: Inventory = CardList.empty[InventoryCard], decks: List[Deck[DeckListCard]] = List.empty) =
     TestFSMRef(
-      new CoreFSM(
+      new Core(
         defaultLoader(inventory),
         defaultDeckLoader(decks)
       )
@@ -50,15 +50,15 @@ class CoreFSMSpec extends FlatSpec with Matchers {
   "CoreFSM" should "start in Unintialised state" in {
     val core = fsm()
 
-    core.stateName should be(CoreSpec.Uninitialized)
-    core.stateData should be(CoreSpec.Empty)
+    core.stateName should be(Core.Uninitialized)
+    core.stateData should be(Core.Empty)
   }
 
   def loadInventory() = {
     val inventory = CardList(InventoryCard("Path to Exile", 4, Edition("CON"), NonFoil))
     val core = fsm(inventory)
 
-    core ! CoreSpec.LoadInventory(new File(""))
+    core ! Core.LoadInventory(new File(""))
     (core, inventory)
   }
 
@@ -66,8 +66,8 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     val (core, inventory) = loadInventory()
 
     core.stateData match {
-      case CoreSpec.StateData(Some(i), _) => i should equal(inventory)
-      case _                              => fail()
+      case Core.StateData(Some(i), _) => i should equal(inventory)
+      case _                          => fail()
     }
   }
 
@@ -77,40 +77,40 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     val core =
       parent.childActorOf(
         Props(
-          classOf[CoreFSM],
+          classOf[Core],
           (f: File) => IO({ CardList.empty[InventoryCard].writer(logs) }),
           new FileDeckLoader[DeckListCard] {
             override def load(file: File): IO[DeckLoaderResult[DeckListCard]] = ???
           }
         )
       )
-    parent.send(core, CoreSpec.LoadInventory(new File("")))
+    parent.send(core, Core.LoadInventory(new File("")))
 
     parent.fishForMessage(1.second, "") {
-      case UISpec.InventoryAvailable(_) => true
-      case _                            => false
+      case UI.InventoryAvailable(_) => true
+      case _                        => false
     } match {
-      case UISpec.InventoryAvailable(l) => l should equal(logs)
-      case _                            => fail()
+      case UI.InventoryAvailable(l) => l should equal(logs)
+      case _                        => fail()
     }
   }
 
   it should "change it state to InventoryLoaded after loading the inventory" in {
     val (core, _) = loadInventory()
-    core.stateName should be(CoreSpec.InventoryLoaded)
+    core.stateName should be(Core.InventoryLoaded)
   }
 
   it should "notify it's parent when a result is available" in {
     val parent = TestProbe()
-    val core = parent.childActorOf(Props(classOf[CoreFSM], defaultLoader(), new FileDeckLoader[DeckListCard] {
+    val core = parent.childActorOf(Props(classOf[Core], defaultLoader(), new FileDeckLoader[DeckListCard] {
       override def load(file: File): IO[DeckLoaderResult[DeckListCard]] = ???
     }))
-    parent.send(core, CoreSpec.LoadInventory(new File("")))
-    parent.send(core, CoreSpec.PrintInventory)
+    parent.send(core, Core.LoadInventory(new File("")))
+    parent.send(core, Core.PrintInventory)
 
     parent.fishForMessage(1.second, "") {
-      case WorkerFinished(UISpec.InventoryResult(i)) => true
-      case _                                         => false
+      case WorkerFinished(UI.InventoryResult(i)) => true
+      case _                                     => false
     } shouldBe an[WorkerFinished]
   }
 
@@ -125,12 +125,12 @@ class CoreFSMSpec extends FlatSpec with Matchers {
       )
     )
 
-    core ! CoreSpec.LoadInventory(new File(""))
-    core ! CoreSpec.LoadDecks(new File(""))
+    core ! Core.LoadInventory(new File(""))
+    core ! Core.LoadDecks(new File(""))
 
     core.stateData match {
-      case CoreSpec.StateData(_, decks: List[Deck[DeckListCard]]) => decks.head.mainBoard should equal(mainBoard)
-      case _                                                      => fail()
+      case Core.StateData(_, decks: List[Deck[_]]) => decks.head.mainBoard should equal(mainBoard)
+      case _                                       => fail()
     }
   }
 
@@ -138,15 +138,15 @@ class CoreFSMSpec extends FlatSpec with Matchers {
     val parent = TestProbe()
     val mainBoard = CardList(DeckListCard("Tarmogoyf", 4), DeckListCard("Path to Exile", 4))
     val core = parent.childActorOf(
-      Props(classOf[CoreFSM], defaultLoader(), defaultDeckLoader(List(Deck(mainBoard = mainBoard))))
+      Props(classOf[Core], defaultLoader(), defaultDeckLoader(List(Deck(mainBoard = mainBoard))))
     )
 
-    parent.send(core, CoreSpec.LoadInventory(new File("")))
-    core ! CoreSpec.LoadDecks(new File(""))
+    parent.send(core, Core.LoadInventory(new File("")))
+    core ! Core.LoadDecks(new File(""))
 
     parent.fishForMessage(1.second, "") {
-      case WorkerFinished(UISpec.DecksAreLoaded) => true
-      case _                                     => false
+      case WorkerFinished(UI.DecksAreLoaded) => true
+      case _                                 => false
     } shouldBe an[WorkerFinished]
   }
 }

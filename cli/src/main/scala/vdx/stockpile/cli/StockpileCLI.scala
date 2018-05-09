@@ -7,7 +7,7 @@ import cats.effect.IO
 import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.Deck.DeckLoaderResult
 import vdx.stockpile.Inventory.InventoryLoaderResult
-import vdx.stockpile.cli.CoreSpec.FileDeckLoader
+import vdx.stockpile.cli.Core.FileDeckLoader
 import vdx.stockpile.cli.console.Terminal
 import vdx.stockpile.deck.format.decklist.DeckListFromFileIOInterpreter
 import vdx.stockpile.inventory.format.deckbox.{IOCsvParserInterpreter, InventoryReaderThroughParserAndCardDBInterpreter}
@@ -33,8 +33,8 @@ object StockpileCLI extends App {
 
   val ui = system.actorOf(
     Props(
-      classOf[UIFSM],
-      (system: ActorRefFactory) => system.actorOf(Props(classOf[CoreFSM], loadInventoryFromFile, fileDeckLoader)),
+      classOf[UI],
+      (system: ActorRefFactory) => system.actorOf(Props(classOf[Core], loadInventoryFromFile, fileDeckLoader)),
       new Terminal
     ),
     "ui"

@@ -1,5 +1,7 @@
 package vdx.stockpile.cli
 
+import vdx.stockpile.cli.Menu.MenuItem
+
 package object console {
 
   trait Console {

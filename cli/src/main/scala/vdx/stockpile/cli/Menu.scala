@@ -1,5 +1,7 @@
 package vdx.stockpile.cli
 
+import Menu._
+
 case class Menu(actions: List[MenuItem]) {
   def asStrings: List[String] =
     indexed.map {
@@ -20,6 +22,14 @@ case class Menu(actions: List[MenuItem]) {
 }
 
 object Menu {
+  trait MenuItem {
+    def key: Option[Char] = None
+    def label: String
+  }
+
+  trait SubMenu extends MenuItem
+  trait Action extends MenuItem
+
   case object Quit extends MenuItem {
     override def key: Option[Char] = Option('q')
     override def label: String = "Quit"
