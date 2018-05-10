@@ -9,7 +9,7 @@ package object console {
 
     def readLine(prompt: String = ""): String
 
-    def println(x: Any): Unit
+    def println(x: Any = ""): Unit
   }
 
   class Terminal extends Console {
@@ -25,6 +25,6 @@ package object console {
 
     override def readLine(prompt: String = ""): String = scala.io.StdIn.readLine(prompt)
 
-    override def println(x: Any): Unit = scala.Predef.println(x)
+    override def println(x: Any = ""): Unit = scala.Predef.println(x)
   }
 }

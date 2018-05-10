@@ -76,6 +76,7 @@
  <check level="warning" class="org.scalastyle.file.RegexChecker" enabled="true">
   <parameters>
    <parameter name="regex"><![CDATA[([mM]ap|[fF]ilter|[fF]old|[fF]oldLeft|[fF]oldRight|[tT]raverse)\(\{]]></parameter>
+   <parameter name="regex"><![CDATA[(isInstanceOf|asIstanceOf)]]></parameter>
   </parameters>
  </check>
  <check level="warning" class="org.scalastyle.scalariform.NumberOfTypesChecker" enabled="true">
@@ -86,6 +87,7 @@
  <check level="warning" class="org.scalastyle.scalariform.CyclomaticComplexityChecker" enabled="true">
   <parameters>
    <parameter name="maximum"><![CDATA[10]]></parameter>
+   <parameter name="countCase"><![CDATA[false]]></parameter>
   </parameters>
  </check>
  <check level="warning" class="org.scalastyle.scalariform.UppercaseLChecker" enabled="true"></check>

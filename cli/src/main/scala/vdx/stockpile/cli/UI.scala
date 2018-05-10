@@ -3,7 +3,10 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.{ActorRef, ActorRefFactory, FSM}
+import vdx.stockpile.Card.DeckListCard
+import vdx.stockpile.{Card, CardList}
 import vdx.stockpile.Inventory.InventoryLog
+import vdx.stockpile.cardlist.CardListOperations
 import vdx.stockpile.cli.Menu._
 import vdx.stockpile.cli.console.Console
 
@@ -85,15 +88,31 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
 
   when(DeckLoadedScreen) {
     case Event(DrawMenu, data: StateData) =>
-      console.menu(Menu.decks)(defaultHandlers(DeckLoadedScreen, data))
+      console.menu(Menu.decks)(
+        appendDefaultHandlers(
+          {
+            case Menu.DistinctHaves =>
+              core ! Core.DistinctHaves
+              enterWorkingState(DeckLoadedScreen, data)
+          },
+          DeckLoadedScreen,
+          data
+        )
+      )
   }
 
   when(Working) {
-    case Event(WorkerFinished(r: InventoryResult), data @ StateData(head :: tail)) =>
+    case Event(WorkerFinished(r: InventoryResult), data: StateData) =>
       r.inventory.toList.foreach(console.println)
       goBack(data)
-    case Event(WorkerFinished(DecksAreLoaded), data @ StateData(head :: tail)) =>
+    case Event(WorkerFinished(DecksAreLoaded), data: StateData) =>
       goto(DeckLoadedScreen).using(data)
+    case Event(WorkerFinished(ds: DistinctHaves[DeckListCard]), data: StateData) =>
+      ds.haves.foreach { list =>
+        list.toList.foreach(console.println)
+        console.println()
+      }
+      goBack(data)
   }
 
   whenUnhandled {
@@ -121,6 +140,7 @@ object UI {
   // Worker Results
   final case class InventoryResult(inventory: vdx.stockpile.Inventory) extends WorkerResult
   case object DecksAreLoaded extends WorkerResult
+  final case class DistinctHaves[A <: Card[A]](haves: List[CardList[A]]) extends WorkerResult
 
   // State
   sealed trait Screen extends State

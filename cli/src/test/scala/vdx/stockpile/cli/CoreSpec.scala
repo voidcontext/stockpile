@@ -24,10 +24,10 @@ class CoreSpec extends FlatSpec with Matchers {
 
   implicit val system: ActorSystem = ActorSystem("test")
 
-  def defaultLoader(inventory: Inventory = CardList.empty[InventoryCard]) =
+  private def defaultLoader(inventory: Inventory = CardList.empty[InventoryCard]) =
     (f: File) => IO({ inventory.pure[LoggedInventory] })
 
-  def defaultDeckLoader(decks: List[Deck[DeckListCard]] = List.empty) =
+  private def defaultDeckLoader(decks: List[Deck[DeckListCard]] = List.empty) =
     new FileDeckLoader[DeckListCard] {
       var _decks = decks
 
@@ -39,7 +39,7 @@ class CoreSpec extends FlatSpec with Matchers {
       }
     }
 
-  def fsm(inventory: Inventory = CardList.empty[InventoryCard], decks: List[Deck[DeckListCard]] = List.empty) =
+  private def fsm(inventory: Inventory = CardList.empty[InventoryCard], decks: List[Deck[DeckListCard]] = List.empty) =
     TestFSMRef(
       new Core(
         defaultLoader(inventory),
@@ -47,14 +47,14 @@ class CoreSpec extends FlatSpec with Matchers {
       )
     )
 
-  "CoreFSM" should "start in Unintialised state" in {
+  "Core" should "start in Unintialised state" in {
     val core = fsm()
 
     core.stateName should be(Core.Uninitialized)
     core.stateData should be(Core.Empty)
   }
 
-  def loadInventory() = {
+  private def loadInventory() = {
     val inventory = CardList(InventoryCard("Path to Exile", 4, Edition("CON"), NonFoil))
     val core = fsm(inventory)
 
@@ -114,7 +114,7 @@ class CoreSpec extends FlatSpec with Matchers {
     } shouldBe an[WorkerFinished]
   }
 
-  "CoreFSM :: LoadDecks" should "a single deck file" in {
+  "Core :: LoadDecks" should "a single deck file" in {
     val mainBoard = CardList(DeckListCard("Tarmogoyf", 4), DeckListCard("Path to Exile", 4))
     val core = fsm(
       CardList.empty,
@@ -148,5 +148,41 @@ class CoreSpec extends FlatSpec with Matchers {
       case WorkerFinished(UI.DecksAreLoaded) => true
       case _                                 => false
     } shouldBe an[WorkerFinished]
+  }
+
+  "Core :: DistinctHaves" should "return a list of haves for each loaded deck" in {
+
+    val parent = TestProbe()
+    val mainBoard = CardList(DeckListCard("Tarmogoyf", 4), DeckListCard("Path to Exile", 4), DeckListCard("Forest", 1))
+    val inventory = CardList(
+      InventoryCard("Tarmogoyf", 2, Edition("MM3"), NonFoil),
+      InventoryCard("Path to Exile", 3, Edition("MM3"), NonFoil),
+      InventoryCard("Cavern of Souls", 3, Edition("MM3"), NonFoil)
+    )
+
+    val core = parent.childActorOf(
+      Props(classOf[Core], defaultLoader(inventory), defaultDeckLoader(List(Deck(mainBoard = mainBoard))))
+    )
+
+    core ! Core.LoadInventory(new File(""))
+    core ! Core.LoadDecks(new File(""))
+
+    core ! Core.DistinctHaves
+
+    parent
+      .fishForMessage(1.second, "") {
+        case WorkerFinished(haves: UI.DistinctHaves[DeckListCard]) => true
+        case _                                                     => false
+      } match {
+      case WorkerFinished(haves: UI.DistinctHaves[DeckListCard]) =>
+        haves.haves.head.toList should equal(
+          CardList(
+            DeckListCard("Tarmogoyf", 2),
+            DeckListCard("Path to Exile", 3)
+          ).toList
+        )
+      case _ => fail()
+
+    }
   }
 }

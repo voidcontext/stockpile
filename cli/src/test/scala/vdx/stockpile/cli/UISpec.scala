@@ -5,8 +5,9 @@ import java.io.File
 import akka.actor.ActorSystem
 import akka.testkit.{TestFSMRef, TestProbe}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import vdx.stockpile.Card.{Edition, InventoryCard, NonFoil}
+import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Inventory.InventoryError
+import vdx.stockpile.cli.Core.DistinctHaves
 import vdx.stockpile.cli.Menu.MenuItem
 import vdx.stockpile.cli.UI.DecksAreLoaded
 import vdx.stockpile.cli.console.Console
@@ -51,7 +52,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     case _ => Unit
   }
 
-  "UIFSM" should "start in Uninitialized state" in {
+  "UI" should "start in Uninitialized state" in {
     val (_, ui) = fsm()
 
     ui.stateName should be(UI.Uninitialized)
@@ -94,7 +95,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     ui.stateName should be(UI.Working)
   }
 
-  def printInventory(inventory: Inventory) = {
+  private def printInventory(inventory: Inventory) = {
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.InventoryExportTerminal, Menu.Nop), List.empty)
     val (probe, ui) = fsm(console)
 
@@ -155,7 +156,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     Await.ready(systemToTerminate.whenTerminated, 1.minutes)
   }
 
-  "UIFSM :: InventoryExport" should "enter into the selected submenu" in {
+  "UI :: InventoryExport" should "enter into the selected submenu" in {
     val console = new ConsoleMock(List(Menu.InventoryExport, Menu.Nop), List.empty)
     val (probe, ui) = fsm(console)
 
@@ -165,7 +166,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     console.displayedMenus(1) should equal(Menu.export)
   }
 
-  "UIFSM :: LoadDecksFromDir" should "ask for the directory where to load the decks from" in {
+  "UI :: LoadDecksFromDir" should "ask for the directory where to load the decks from" in {
     val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.Nop), List("decks"))
     val (_, ui) = fsm(console)
 
@@ -214,4 +215,36 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     console.displayedMenus(1) should equal(Menu.decks)
   }
 
+  private def distinctHaves() = {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.DistinctHaves, Menu.Nop), List("decks"))
+    val (probe, ui) = fsm(console)
+
+    ui ! UI.InventoryAvailable(Vector.empty)
+    ui ! UI.WorkerFinished(DecksAreLoaded)
+
+    (probe, ui, console)
+  }
+
+  "UI :: DistinctHaves" should "should delegate the work to the Core actor" in {
+    val (probe, _, _) = distinctHaves()
+
+    probe.fishForMessage(1.second) {
+      case Core.DistinctHaves => true
+      case _                  => false
+    } should equal(Core.DistinctHaves)
+  }
+
+  it should "should put UI into working state" in {
+    val (_, ui, _) = distinctHaves()
+    ui.stateName should be(UI.Working)
+  }
+
+  it should "print the result" in {
+    val (_, ui, console) = distinctHaves()
+
+    val card = DeckListCard("Tarmogoyf", 4)
+    ui ! UI.WorkerFinished(UI.DistinctHaves(List(CardList(card))))
+
+    console.printedLines should equal(Vector(card.toString, ""))
+  }
 }
