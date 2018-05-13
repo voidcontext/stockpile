@@ -16,17 +16,18 @@ import scala.io.Source
 import scala.util.matching.Regex
 
 package object decklist {
-  class DeckListFromFileIOInterpreter(fileIO: IO[Source]) extends DeckLoaderAlg[IO, DeckListCard] {
+  class DeckListFromFileIOInterpreter(name: String, fileIO: IO[Source]) extends DeckLoaderAlg[IO, DeckListCard] {
     override def load: IO[DeckLoaderResult[DeckListCard]] =
       fileIO
         .map(_.getLines.mkString("\n"))
         .flatMap(
-          loadedString => new DecklistFromStringInterpreter[IO](loadedString).load
+          loadedString => new DecklistFromStringInterpreter[IO](name, loadedString).load
         )
 
   }
 
-  class DecklistFromStringInterpreter[F[_]: Monad](deckList: String) extends DeckLoaderAlg[F, DeckListCard] {
+  class DecklistFromStringInterpreter[F[_]: Monad](name: String, deckList: String)
+      extends DeckLoaderAlg[F, DeckListCard] {
     private def lineRegex = """^(\d+)(x|) (.*)$""".r
 
     type Logged[A] = Writer[Vector[DeckLog], A]
@@ -39,7 +40,7 @@ package object decklist {
       Applicative[F].pure(
         deckList
           .split("\n")
-          .foldLeft(Applicative[Logged].pure(Deck[DeckListCard]()))(
+          .foldLeft(Applicative[Logged].pure(Deck[DeckListCard](name)))(
             (w, line) =>
               lineRegex.findFirstMatchIn(line) match {
                 case Some(regexMatch) =>

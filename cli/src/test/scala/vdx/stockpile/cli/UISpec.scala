@@ -9,7 +9,7 @@ import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Inventory.InventoryError
 import vdx.stockpile.cli.Core.DistinctHaves
 import vdx.stockpile.cli.Menu.MenuItem
-import vdx.stockpile.cli.UI.DecksAreLoaded
+import vdx.stockpile.cli.UI.{DecksAreLoaded, HavesInDeck}
 import vdx.stockpile.cli.console.Console
 import vdx.stockpile.instances.eq._
 import vdx.stockpile.{CardList, Inventory}
@@ -243,8 +243,8 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (_, ui, console) = distinctHaves()
 
     val card = DeckListCard("Tarmogoyf", 4)
-    ui ! UI.WorkerFinished(UI.DistinctHaves(List(CardList(card))))
+    ui ! UI.WorkerFinished(UI.DistinctHaves(List(HavesInDeck("Dummy deck", CardList(card)))))
 
-    console.printedLines should equal(Vector(card.toString, ""))
+    console.printedLines should equal(Vector("Dummy deck", card.toString, ""))
   }
 }

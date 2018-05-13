@@ -12,7 +12,7 @@ class DeckListFromFileIOInterpreterSpec extends FlatSpec with Matchers with Samp
   val file = IO({ scala.io.Source.fromResource(sampleDeckResource) })
 
   "DeckListFromFileIOInterpreter" should "load a decklist from string" in {
-    val loader = new DeckListFromFileIOInterpreter(file)
+    val loader = new DeckListFromFileIOInterpreter("dummy deck", file)
 
     val (_, deck) = loader.load.unsafeRunSync().run
 
@@ -20,7 +20,7 @@ class DeckListFromFileIOInterpreterSpec extends FlatSpec with Matchers with Samp
   }
 
   it should "populate the main board" in {
-    val loader = new DeckListFromFileIOInterpreter(file)
+    val loader = new DeckListFromFileIOInterpreter("dummy deck", file)
 
     val (_, deck) = loader.load.unsafeRunSync().run
 
@@ -28,7 +28,7 @@ class DeckListFromFileIOInterpreterSpec extends FlatSpec with Matchers with Samp
   }
 
   it should "populate the side board" in {
-    val loader = new DeckListFromFileIOInterpreter(file)
+    val loader = new DeckListFromFileIOInterpreter("dummy deck", file)
 
     val (_, deck) = loader.load.unsafeRunSync().run
 

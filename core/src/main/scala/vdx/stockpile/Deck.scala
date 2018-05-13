@@ -4,6 +4,7 @@ import cats.Eq
 import cats.data.Writer
 
 final case class Deck[A <: Card[A]](
+  name: String,
   mainBoard: CardList[A] = CardList.empty[A],
   sideBoard: CardList[A] = CardList.empty[A],
   maybeBoard: CardList[A] = CardList.empty[A]
@@ -15,10 +16,11 @@ final case class Deck[A <: Card[A]](
 object Deck {
 
   def apply[A <: Card[A]](
+    name: String,
     mainBoard: CardList[A] = CardList.empty[A],
     sideBoard: CardList[A] = CardList.empty[A],
     maybeBoard: CardList[A] = CardList.empty[A]
-  ): Deck[A] = new Deck(mainBoard, sideBoard, maybeBoard)
+  ): Deck[A] = new Deck(name, mainBoard, sideBoard, maybeBoard)
 
   sealed trait DeckLog {
     def message: String

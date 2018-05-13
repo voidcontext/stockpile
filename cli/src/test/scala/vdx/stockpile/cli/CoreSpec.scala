@@ -11,7 +11,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
 import vdx.stockpile.Inventory.{InventoryError, InventoryLog}
-import vdx.stockpile.cli.Core.FileDeckLoader
+import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
 import vdx.stockpile.cli.UI.WorkerFinished
 import vdx.stockpile.instances.eq._
 import vdx.stockpile.{CardList, Deck, Inventory}
@@ -31,10 +31,10 @@ class CoreSpec extends FlatSpec with Matchers {
     new FileDeckLoader[DeckListCard] {
       var _decks = decks
 
-      override def load(file: File): IO[DeckLoaderResult[DeckListCard]] = _decks match {
+      override def load(file: File): IO[FileDeckLoaderResult[DeckListCard]] = _decks match {
         case head :: tail =>
           _decks = tail
-          head.pure[LoggedDeck].pure[IO]
+          List(head).pure[LoggedDeck].pure[IO]
         case _ => fail()
       }
     }
@@ -80,7 +80,7 @@ class CoreSpec extends FlatSpec with Matchers {
           classOf[Core],
           (f: File) => IO({ CardList.empty[InventoryCard].writer(logs) }),
           new FileDeckLoader[DeckListCard] {
-            override def load(file: File): IO[DeckLoaderResult[DeckListCard]] = ???
+            override def load(file: File): IO[FileDeckLoaderResult[DeckListCard]] = ???
           }
         )
       )
@@ -103,7 +103,7 @@ class CoreSpec extends FlatSpec with Matchers {
   it should "notify it's parent when a result is available" in {
     val parent = TestProbe()
     val core = parent.childActorOf(Props(classOf[Core], defaultLoader(), new FileDeckLoader[DeckListCard] {
-      override def load(file: File): IO[DeckLoaderResult[DeckListCard]] = ???
+      override def load(file: File): IO[FileDeckLoaderResult[DeckListCard]] = ???
     }))
     parent.send(core, Core.LoadInventory(new File("")))
     parent.send(core, Core.PrintInventory)
@@ -120,6 +120,7 @@ class CoreSpec extends FlatSpec with Matchers {
       CardList.empty,
       List(
         Deck(
+          "dummy deck",
           mainBoard = mainBoard
         )
       )
@@ -138,7 +139,7 @@ class CoreSpec extends FlatSpec with Matchers {
     val parent = TestProbe()
     val mainBoard = CardList(DeckListCard("Tarmogoyf", 4), DeckListCard("Path to Exile", 4))
     val core = parent.childActorOf(
-      Props(classOf[Core], defaultLoader(), defaultDeckLoader(List(Deck(mainBoard = mainBoard))))
+      Props(classOf[Core], defaultLoader(), defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))))
     )
 
     parent.send(core, Core.LoadInventory(new File("")))
@@ -161,7 +162,7 @@ class CoreSpec extends FlatSpec with Matchers {
     )
 
     val core = parent.childActorOf(
-      Props(classOf[Core], defaultLoader(inventory), defaultDeckLoader(List(Deck(mainBoard = mainBoard))))
+      Props(classOf[Core], defaultLoader(inventory), defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))))
     )
 
     core ! Core.LoadInventory(new File(""))
@@ -175,14 +176,13 @@ class CoreSpec extends FlatSpec with Matchers {
         case _                                                     => false
       } match {
       case WorkerFinished(haves: UI.DistinctHaves[DeckListCard]) =>
-        haves.haves.head.toList should equal(
+        haves.haves.head.haves.toList should equal(
           CardList(
             DeckListCard("Tarmogoyf", 2),
             DeckListCard("Path to Exile", 3)
           ).toList
         )
       case _ => fail()
-
     }
   }
 }

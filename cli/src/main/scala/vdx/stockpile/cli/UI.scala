@@ -6,7 +6,6 @@ import akka.actor.{ActorRef, ActorRefFactory, FSM}
 import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.{Card, CardList}
 import vdx.stockpile.Inventory.InventoryLog
-import vdx.stockpile.cardlist.CardListOperations
 import vdx.stockpile.cli.Menu._
 import vdx.stockpile.cli.console.Console
 
@@ -108,8 +107,9 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
     case Event(WorkerFinished(DecksAreLoaded), data: StateData) =>
       goto(DeckLoadedScreen).using(data)
     case Event(WorkerFinished(ds: DistinctHaves[DeckListCard]), data: StateData) =>
-      ds.haves.foreach { list =>
-        list.toList.foreach(console.println)
+      ds.haves.foreach { have =>
+        console.println(have.deckName)
+        have.haves.toList.foreach(console.println)
         console.println()
       }
       goBack(data)
@@ -140,7 +140,8 @@ object UI {
   // Worker Results
   final case class InventoryResult(inventory: vdx.stockpile.Inventory) extends WorkerResult
   case object DecksAreLoaded extends WorkerResult
-  final case class DistinctHaves[A <: Card[A]](haves: List[CardList[A]]) extends WorkerResult
+  final case class HavesInDeck[A <: Card[A]](deckName: String, haves: CardList[A])
+  final case class DistinctHaves[A <: Card[A]](haves: List[HavesInDeck[A]]) extends WorkerResult
 
   // State
   sealed trait Screen extends State

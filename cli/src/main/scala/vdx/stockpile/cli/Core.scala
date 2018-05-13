@@ -3,10 +3,11 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.FSM
+import cats.data.Writer
 import cats.effect.IO
 import vdx.stockpile.{Card, CardList, Deck, Inventory}
 import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.Deck.DeckLoaderResult
+import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cardlist.CardListOperations
 import vdx.stockpile.cli.UI.WorkerFinished
@@ -47,12 +48,16 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
 
   when(InventoryLoaded)(appendExitHandler {
     case Event(LoadDecks(f: File), state: StateData) =>
-      stay().using(StateData(state.inventory, List(loadDecks(f))))
+      stay().using(StateData(state.inventory, loadDecks(f)))
     case Event(DistinctHaves, state: StateData) =>
       context.parent ! UI.WorkerFinished(
         UI.DistinctHaves(
           state.decks.map {
-            case deck: Deck[DeckListCard] => intersect(deck.toCardList, state.inventory.get)
+            case deck: Deck[DeckListCard] =>
+              UI.HavesInDeck(
+                deck.name,
+                intersect(deck.toCardList, state.inventory.get)
+              )
           }
         )
       )
@@ -87,7 +92,8 @@ object Core {
   case object PrintInventory extends Message
   case object Exit extends Message
 
+  type FileDeckLoaderResult[A <: Card[A]] = Writer[Vector[DeckLog], List[Deck[A]]]
   private[cli] trait FileDeckLoader[A <: Card[A]] {
-    def load(file: File): IO[DeckLoaderResult[A]]
+    def load(file: File): IO[FileDeckLoaderResult[A]]
   }
 }

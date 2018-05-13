@@ -10,7 +10,7 @@ class DecklistFromStringInterpreterSpec extends FlatSpec with Matchers with Samp
   val decklist = scala.io.Source.fromResource(sampleDeckResource).mkString
 
   "DecklistInterpreter" should "load a decklist from string" in {
-    val loader = new DecklistFromStringInterpreter[Id](decklist)
+    val loader = new DecklistFromStringInterpreter[Id]("dummy deck", decklist)
 
     val (_, deck) = loader.load.run
 
@@ -18,7 +18,7 @@ class DecklistFromStringInterpreterSpec extends FlatSpec with Matchers with Samp
   }
 
   it should "populate the main board" in {
-    val loader = new DecklistFromStringInterpreter[Id](decklist)
+    val loader = new DecklistFromStringInterpreter[Id]("dummy deck", decklist)
 
     val (_, deck) = loader.load.run
 
@@ -26,7 +26,7 @@ class DecklistFromStringInterpreterSpec extends FlatSpec with Matchers with Samp
   }
 
   it should "populate the side board" in {
-    val loader = new DecklistFromStringInterpreter[Id](decklist)
+    val loader = new DecklistFromStringInterpreter[Id]("dummy deck", decklist)
 
     val (_, deck) = loader.load.run
 

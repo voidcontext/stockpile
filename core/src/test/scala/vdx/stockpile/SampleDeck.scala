@@ -7,6 +7,7 @@ trait SampleDeck {
   val sampleDeckResource = "decklist.txt"
 
   val sampleDeck = Deck(
+    "dummy deck",
     mainBoard = CardList(
       DeckListCard("Eldrazi Displacer", 4),
       DeckListCard("Flickerwisp", 4),
