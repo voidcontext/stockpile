@@ -185,4 +185,40 @@ class CoreSpec extends FlatSpec with Matchers {
       case _ => fail()
     }
   }
+
+  "Core :: DistinctMissing" should "return a list of haves for each loaded deck" in {
+
+    val parent = TestProbe()
+    val mainBoard = CardList(DeckListCard("Tarmogoyf", 4), DeckListCard("Path to Exile", 4), DeckListCard("Forest", 1))
+    val inventory = CardList(
+      InventoryCard("Tarmogoyf", 2, Edition("MM3"), NonFoil),
+      InventoryCard("Path to Exile", 3, Edition("MM3"), NonFoil),
+      InventoryCard("Cavern of Souls", 3, Edition("MM3"), NonFoil)
+    )
+
+    val core = parent.childActorOf(
+      Props(classOf[Core], defaultLoader(inventory), defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))))
+    )
+
+    core ! Core.LoadInventory(new File(""))
+    core ! Core.LoadDecks(new File(""))
+
+    core ! Core.DistinctMissing
+
+    parent
+      .fishForMessage(1.second, "") {
+        case WorkerFinished(haves: UI.DistinctMissing[DeckListCard]) => true
+        case _                                                       => false
+      } match {
+      case WorkerFinished(missing: UI.DistinctMissing[DeckListCard]) =>
+        missing.missing.head.missing.toList should equal(
+          CardList(
+            DeckListCard("Tarmogoyf", 2),
+            DeckListCard("Path to Exile", 1),
+            DeckListCard("Forest", 1)
+          ).toList
+        )
+      case _ => fail()
+    }
+  }
 }

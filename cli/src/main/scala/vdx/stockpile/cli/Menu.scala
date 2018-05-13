@@ -45,9 +45,8 @@ object Menu {
   }
 
   case object LoadDecksFromDir extends MenuItem { override def label: String = "Load Decks from directory" }
-  case object DistinctHaves extends MenuItem {
-    override def label: String = "Distinct Haves"
-  }
+  case object DistinctHaves extends MenuItem { override def label: String = "Haves (sharing cards)" }
+  case object DistinctMissing extends MenuItem { override def label: String = "Missing (sharing cards)" }
 
   val main = apply(
     List(
@@ -67,6 +66,7 @@ object Menu {
   val decks = apply(
     List(
       DistinctHaves,
+      DistinctMissing,
       Quit
     )
   )

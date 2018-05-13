@@ -38,8 +38,11 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
 
   private def intersect[A <: Card[A], B <: Card[B]](list: CardList[A], other: CardList[B])(
     implicit i: Intersection[A, B, A]
-  ) =
-    i(list, other)
+  ) = i(list, other)
+
+  private def difference[A <: Card[A], B <: Card[B]](list: CardList[A], other: CardList[B])(
+    implicit d: Difference[A, B, A]
+  ) = d(list, other)
 
   when(Uninitialized) {
     case Event(LoadInventory(file), Empty) =>
@@ -57,6 +60,19 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
               UI.HavesInDeck(
                 deck.name,
                 intersect(deck.toCardList, state.inventory.get)
+              )
+          }
+        )
+      )
+      stay()
+    case Event(DistinctMissing, state: StateData) =>
+      context.parent ! UI.WorkerFinished(
+        UI.DistinctMissing(
+          state.decks.map {
+            case deck: Deck[DeckListCard] =>
+              UI.MissingFromDeck(
+                deck.name,
+                difference(deck.toCardList, state.inventory.get)
               )
           }
         )
@@ -89,6 +105,7 @@ object Core {
   final case class LoadInventory(file: File) extends Message
   final case class LoadDecks(file: File) extends Message
   case object DistinctHaves extends Message
+  case object DistinctMissing extends Message
   case object PrintInventory extends Message
   case object Exit extends Message
 

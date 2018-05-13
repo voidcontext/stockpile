@@ -93,6 +93,9 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
             case Menu.DistinctHaves =>
               core ! Core.DistinctHaves
               enterWorkingState(DeckLoadedScreen, data)
+            case Menu.DistinctMissing =>
+              core ! Core.DistinctMissing
+              enterWorkingState(DeckLoadedScreen, data)
           },
           DeckLoadedScreen,
           data
@@ -110,6 +113,13 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
       ds.haves.foreach { have =>
         console.println(have.deckName)
         have.haves.toList.foreach(console.println)
+        console.println()
+      }
+      goBack(data)
+    case Event(WorkerFinished(dm: DistinctMissing[DeckListCard]), data: StateData) =>
+      dm.missing.foreach { missing =>
+        console.println(missing.deckName)
+        missing.missing.toList.foreach(console.println)
         console.println()
       }
       goBack(data)
@@ -141,7 +151,9 @@ object UI {
   final case class InventoryResult(inventory: vdx.stockpile.Inventory) extends WorkerResult
   case object DecksAreLoaded extends WorkerResult
   final case class HavesInDeck[A <: Card[A]](deckName: String, haves: CardList[A])
+  final case class MissingFromDeck[A <: Card[A]](deckName: String, missing: CardList[A])
   final case class DistinctHaves[A <: Card[A]](haves: List[HavesInDeck[A]]) extends WorkerResult
+  final case class DistinctMissing[A <: Card[A]](missing: List[MissingFromDeck[A]]) extends WorkerResult
 
   // State
   sealed trait Screen extends State

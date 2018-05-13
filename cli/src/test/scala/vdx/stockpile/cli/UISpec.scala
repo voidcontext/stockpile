@@ -9,7 +9,7 @@ import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Inventory.InventoryError
 import vdx.stockpile.cli.Core.DistinctHaves
 import vdx.stockpile.cli.Menu.MenuItem
-import vdx.stockpile.cli.UI.{DecksAreLoaded, HavesInDeck}
+import vdx.stockpile.cli.UI.{DecksAreLoaded, HavesInDeck, MissingFromDeck}
 import vdx.stockpile.cli.console.Console
 import vdx.stockpile.instances.eq._
 import vdx.stockpile.{CardList, Inventory}
@@ -244,6 +244,39 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val card = DeckListCard("Tarmogoyf", 4)
     ui ! UI.WorkerFinished(UI.DistinctHaves(List(HavesInDeck("Dummy deck", CardList(card)))))
+
+    console.printedLines should equal(Vector("Dummy deck", card.toString, ""))
+  }
+
+  private def distinctMissing() = {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.DistinctMissing, Menu.Nop), List("decks"))
+    val (probe, ui) = fsm(console)
+
+    ui ! UI.InventoryAvailable(Vector.empty)
+    ui ! UI.WorkerFinished(DecksAreLoaded)
+
+    (probe, ui, console)
+  }
+
+  "UI :: DistinctMissing" should "should delegate the work to the Core actor" in {
+    val (probe, _, _) = distinctMissing()
+
+    probe.fishForMessage(1.second) {
+      case Core.DistinctMissing => true
+      case _                    => false
+    } should equal(Core.DistinctMissing)
+  }
+
+  it should "should put UI into working state" in {
+    val (_, ui, _) = distinctMissing()
+    ui.stateName should be(UI.Working)
+  }
+
+  it should "print the result" in {
+    val (_, ui, console) = distinctMissing()
+
+    val card = DeckListCard("Tarmogoyf", 4)
+    ui ! UI.WorkerFinished(UI.DistinctMissing(List(MissingFromDeck("Dummy deck", CardList(card)))))
 
     console.printedLines should equal(Vector("Dummy deck", card.toString, ""))
   }
