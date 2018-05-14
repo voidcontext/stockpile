@@ -1,5 +1,3 @@
-import sbt.Keys.{name, publishArtifact, scalacOptions}
-
 val stockpileVersion = "0.1.0"
 
 val defaultSettings = Seq(
@@ -42,21 +40,34 @@ val catsVersion = "1.1.0"
 val catsEffectVersion = "0.10.1"
 val scalatestVersion = "3.0.4"
 val akkaVersion = "2.5.12"
+val http4sVersion = "0.18.11"
 
 lazy val core = module("core")
+   .configs(IntegrationTest)
    .settings(
+     Defaults.itSettings,
      libraryDependencies ++= Seq(
        "org.typelevel" %% "cats-core" % catsVersion,
        "org.typelevel" %% "cats-effect" % catsEffectVersion,
+
+       "com.github.pureconfig" %% "pureconfig" % "0.9.1",
 
        "io.circe" %% "circe-core" % circeVersion,
        "io.circe" %% "circe-generic" % circeVersion,
        "io.circe" %% "circe-parser" % circeVersion,
 
+       // Pricing
+       "org.http4s" %% "http4s-dsl" % http4sVersion,
+       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+       "org.http4s" %% "http4s-circe" % http4sVersion,
+       "com.github.pureconfig" %% "pureconfig-http4s" % "0.9.1",
+       "io.lemonlabs" %% "scala-uri" % "0.4.16", // TODO: old outdated version, but the API has changed since then
+
        // Inventory
        "com.nrinaudo" %% "kantan.csv" % "0.4.0", // csv parser + writer
 
-       "org.scalatest" %% "scalatest" % scalatestVersion % Test,
+       "org.scalatest" %% "scalatest" % scalatestVersion % "it,test",
      ),
   )
 

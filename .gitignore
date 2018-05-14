@@ -3,5 +3,6 @@ target/
 *.class
 *.log
 
+application.conf
 // Test dirs
 decks
