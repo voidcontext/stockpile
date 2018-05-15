@@ -1,15 +1,19 @@
 package vdx.stockpile
 
-import vdx.stockpile.Card.InventoryCard
+import cats.Monad
+import cats.effect.IO
 
 package object pricing {
 
   sealed trait Currency
+  case object EUR extends Currency
+  case object USD extends Currency
 
   sealed trait Source
+  case object Cardmarket extends Source
 
   trait PricerAlg[F[_]] {
-    def getPrice(card: InventoryCard): F[CardPrice]
+    def getPrice[A <: Card[A]](card: A): F[CardPrice[A]]
   }
 
   case class Price(
@@ -18,8 +22,12 @@ package object pricing {
     source: Source
   )
 
-  case class CardPrice(
-    card: InventoryCard,
+  case class CardPrice[A <: Card[A]](
+    card: A,
     price: Price,
   )
+
+  implicit class CardPricingOps[A <: Card[A], F[_]: Monad](card: A) {
+    def price(implicit p: PricerAlg[F]): F[CardPrice[A]] = p.getPrice(card)
+  }
 }

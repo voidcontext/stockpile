@@ -63,6 +63,7 @@ lazy val core = module("core")
        "org.http4s" %% "http4s-circe" % http4sVersion,
        "com.github.pureconfig" %% "pureconfig-http4s" % "0.9.1",
        "io.lemonlabs" %% "scala-uri" % "0.4.16", // TODO: old outdated version, but the API has changed since then
+       "ch.qos.logback" % "logback-classic" % "1.2.3",
 
        // Inventory
        "com.nrinaudo" %% "kantan.csv" % "0.4.0", // csv parser + writer
