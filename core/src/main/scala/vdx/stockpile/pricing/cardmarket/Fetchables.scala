@@ -8,8 +8,11 @@ import org.http4s.client.dsl.io._
 import org.http4s.dsl.io._
 import org.http4s.{EntityDecoder, Header, Request}
 
+/**
+ * Configurable Fetchables
+ */
 trait Fetchables {
-  def config: CMConfig
+  def config: CardmarketAPIConfig
 
   implicit val enrichers: List[RequestEnricher] = List(
     (r: Request[IO]) => {
@@ -31,6 +34,9 @@ trait Fetchables {
     }
   )
 
+  /**
+   * Syntactic sugar to enrich Requests by using the implicit enrichers from the scope.
+   */
   implicit class RequestOps(reqIO: IO[Request[IO]]) {
     def enrich(implicit es: List[RequestEnricher]): IO[Request[IO]] = reqIO.map { req =>
       es.foldLeft(req)((req, enricher) => enricher(req))
@@ -57,7 +63,6 @@ trait Fetchables {
       jsonOf[IO, DetailedProductResult]
 
     override def extract(result: DetailedProductResult): DetailedProduct = result.product
-
   }
 
 }

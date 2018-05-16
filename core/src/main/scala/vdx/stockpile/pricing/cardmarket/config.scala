@@ -8,7 +8,7 @@ case class APICredentials(
   userToken: String,
   userSecret: String
 )
-case class CMConfig(
+case class CardmarketAPIConfig(
   baseUri: Uri,
   apiCredentials: APICredentials
 )

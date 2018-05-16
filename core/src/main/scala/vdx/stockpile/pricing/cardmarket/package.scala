@@ -11,6 +11,9 @@ import pureconfig.modules.http4s._
 package object cardmarket {
   type RequestEnricher = Request[IO] => Request[IO]
 
+  /**
+   * Specification of a remote resource
+   */
   trait Fetchable[T, P] {
     type M
 
@@ -21,6 +24,9 @@ package object cardmarket {
     def extract(result: M): T
   }
 
+  /**
+   * Specification of a simple remote resource. A simple remote resource is the root entity of the response payload.
+   */
   trait SimpleFetchable[T, P] extends Fetchable[T, P] {
     type M = T
 
@@ -30,6 +36,11 @@ package object cardmarket {
   }
 
   object Fetcher {
+
+    /**
+     * This function is fetching a remote resource using the corresponding Fetchable specification and transforms it
+     * into the appropriate case class.
+     */
     def fetch[T, P](
       param: P
     )(implicit c: IO[HttpClient[IO]], fe: Fetchable[T, P], de: Decoder[T]): IO[T] = {
@@ -40,24 +51,27 @@ package object cardmarket {
     }
   }
 
+  /**
+   * Syntactic sugar to fetch remote resources based on the input parameter and the result type.
+   */
   implicit class FetcherOps[P](param: P) {
     def fetch[T](implicit c: IO[HttpClient[IO]], fe: Fetchable[T, P], de: Decoder[T]): IO[T] =
       Fetcher.fetch[T, P](param)
   }
 
+  /**
+   * Fetchable implicits with a default configuration
+   */
   object fetchables extends Fetchables { // scalastyle:off object.name
-    lazy val config: CMConfig =
-      loadConfig[CMConfig](java.nio.file.Paths.get(System.getProperty("user.dir") + "/application.conf"), "cardmarket")
-        .fold[CMConfig](err => throw new RuntimeException(err.head.description), config => config)
+    lazy val config: CardmarketAPIConfig =
+      loadConfig[CardmarketAPIConfig](
+        java.nio.file.Paths.get(System.getProperty("user.dir") + "/application.conf"),
+        "cardmarket"
+      ).fold[CardmarketAPIConfig](err => throw new RuntimeException(err.head.description), config => config)
   }
 
-  implicit val detailedProductOrdering = new Ordering[DetailedProduct] {
-    override def compare(
-      x: DetailedProduct,
-      y: DetailedProduct
-    ): Int =
-      if (x.priceGuide.TREND == y.priceGuide.TREND) 0
-      else if (x.priceGuide.TREND < y.priceGuide.TREND) -1
-      else 1
-  }
+  implicit val detailedProductOrdering: Ordering[DetailedProduct] = (x: DetailedProduct, y: DetailedProduct) =>
+    if (x.priceGuide.TREND == y.priceGuide.TREND) 0
+    else if (x.priceGuide.TREND < y.priceGuide.TREND) -1
+    else 1
 }
