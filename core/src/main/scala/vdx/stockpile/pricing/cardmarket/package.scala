@@ -7,6 +7,7 @@ import org.http4s.client.{Client => HttpClient}
 import org.http4s.circe.jsonOf
 import pureconfig._
 import pureconfig.modules.http4s._
+import vdx.stockpile.Card
 
 package object cardmarket {
   type RequestEnricher = Request[IO] => Request[IO]
@@ -74,4 +75,8 @@ package object cardmarket {
     if (x.priceGuide.TREND == y.priceGuide.TREND) 0
     else if (x.priceGuide.TREND < y.priceGuide.TREND) -1
     else 1
+
+  implicit class DetailedProductOps(detailedProduct: DetailedProduct) {
+    def toCardPrice[A <: Card[A]](card: A) = CardPrice(card, Price(detailedProduct.priceGuide.TREND, EUR, Cardmarket))
+  }
 }

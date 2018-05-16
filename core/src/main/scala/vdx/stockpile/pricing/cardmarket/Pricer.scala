@@ -12,24 +12,9 @@ import vdx.stockpile.{Card, pricing}
 class Pricer(implicit c: IO[Client[IO]]) extends PricerAlg[IO] {
   override def getPrice[A <: Card[A]](card: A): IO[pricing.CardPrice[A]] = card match {
     case DeckListCard(name, _) =>
-      name
-        .fetch[List[Product]]
-        .flatMap[List[DetailedProduct]] { list =>
-          list.parTraverse { product =>
-            product.fetch[DetailedProduct]
-          }
-        }
-        .map(_.min)
-        .map { product =>
-          CardPrice(
-            card,
-            Price(
-              product.priceGuide.TREND,
-              EUR,
-              Cardmarket
-            )
-          )
-        }
-
+      for {
+        products <- name.fetch[List[Product]]
+        detailedProducts <- products.parTraverse(_.fetch[DetailedProduct])
+      } yield detailedProducts.min.toCardPrice(card)
   }
 }
