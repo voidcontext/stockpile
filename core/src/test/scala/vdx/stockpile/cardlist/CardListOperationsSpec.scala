@@ -6,7 +6,7 @@ import vdx.stockpile._
 
 class CardListOperationsSpec extends FlatSpec with Matchers with CardListOperations {
 
-  val deck: DeckList = Deck(
+  val deck: DeckListDeck = Deck(
     "dummy deck",
     mainBoard = CardList(
       DeckListCard("Thought-Knot Seer", 4),

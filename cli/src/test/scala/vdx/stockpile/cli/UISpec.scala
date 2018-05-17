@@ -108,7 +108,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       case _                   => false
     } should be(Core.PrintInventory)
 
-    ui ! UI.WorkerFinished(UI.InventoryResult(inventory))
+    ui ! UI.InventoryResult(inventory)
     (probe, ui, console)
   }
 
@@ -201,7 +201,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (_, ui) = fsm(console)
 
     ui ! UI.InventoryAvailable(Vector.empty)
-    ui ! UI.WorkerFinished(DecksAreLoaded)
+    ui ! UI.DecksAreLoaded
 
     ui.stateName should be(UI.DeckLoadedScreen)
   }
@@ -211,7 +211,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (_, ui) = fsm(console)
 
     ui ! UI.InventoryAvailable(Vector.empty)
-    ui ! UI.WorkerFinished(DecksAreLoaded)
+    ui ! UI.DecksAreLoaded
     console.displayedMenus(1) should equal(Menu.decks)
   }
 
@@ -220,7 +220,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (probe, ui) = fsm(console)
 
     ui ! UI.InventoryAvailable(Vector.empty)
-    ui ! UI.WorkerFinished(DecksAreLoaded)
+    ui ! UI.DecksAreLoaded
 
     (probe, ui, console)
   }
@@ -243,7 +243,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (_, ui, console) = distinctHaves()
 
     val card = DeckListCard("Tarmogoyf", 4)
-    ui ! UI.WorkerFinished(UI.DistinctHaves(List(HavesInDeck("Dummy deck", CardList(card)))))
+    ui ! UI.DistinctHaves(List(HavesInDeck("Dummy deck", CardList(card))))
 
     console.printedLines should equal(Vector("Dummy deck", card.toString, ""))
   }
@@ -253,7 +253,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (probe, ui) = fsm(console)
 
     ui ! UI.InventoryAvailable(Vector.empty)
-    ui ! UI.WorkerFinished(DecksAreLoaded)
+    ui ! UI.DecksAreLoaded
 
     (probe, ui, console)
   }
@@ -276,7 +276,7 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (_, ui, console) = distinctMissing()
 
     val card = DeckListCard("Tarmogoyf", 4)
-    ui ! UI.WorkerFinished(UI.DistinctMissing(List(MissingFromDeck("Dummy deck", CardList(card)))))
+    ui ! UI.DistinctMissing(List(MissingFromDeck("Dummy deck", CardList(card))))
 
     console.printedLines should equal(Vector("Dummy deck", card.toString, ""))
   }

@@ -12,7 +12,6 @@ import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
 import vdx.stockpile.Inventory.{InventoryError, InventoryLog}
 import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
-import vdx.stockpile.cli.UI.WorkerFinished
 import vdx.stockpile.instances.eq._
 import vdx.stockpile.{CardList, Deck, Inventory}
 
@@ -109,9 +108,9 @@ class CoreSpec extends FlatSpec with Matchers {
     parent.send(core, Core.PrintInventory)
 
     parent.fishForMessage(1.second, "") {
-      case WorkerFinished(UI.InventoryResult(i)) => true
-      case _                                     => false
-    } shouldBe an[WorkerFinished]
+      case UI.InventoryResult(_) => true
+      case _                     => false
+    } shouldBe an[UI.InventoryResult]
   }
 
   "Core :: LoadDecks" should "a single deck file" in {
@@ -130,8 +129,8 @@ class CoreSpec extends FlatSpec with Matchers {
     core ! Core.LoadDecks(new File(""))
 
     core.stateData match {
-      case Core.StateData(_, decks: List[Deck[_]]) => decks.head.mainBoard should equal(mainBoard)
-      case _                                       => fail()
+      case Core.StateData(_, decks) => decks.head.mainBoard should equal(mainBoard)
+      case _                        => fail()
     }
   }
 
@@ -146,9 +145,9 @@ class CoreSpec extends FlatSpec with Matchers {
     core ! Core.LoadDecks(new File(""))
 
     parent.fishForMessage(1.second, "") {
-      case WorkerFinished(UI.DecksAreLoaded) => true
-      case _                                 => false
-    } shouldBe an[WorkerFinished]
+      case UI.DecksAreLoaded => true
+      case _                 => false
+    } should equal(UI.DecksAreLoaded)
   }
 
   "Core :: DistinctHaves" should "return a list of haves for each loaded deck" in {
@@ -172,11 +171,11 @@ class CoreSpec extends FlatSpec with Matchers {
 
     parent
       .fishForMessage(1.second, "") {
-        case WorkerFinished(haves: UI.DistinctHaves[DeckListCard]) => true
-        case _                                                     => false
+        case UI.DistinctHaves(_) => true
+        case _                   => false
       } match {
-      case WorkerFinished(haves: UI.DistinctHaves[DeckListCard]) =>
-        haves.haves.head.haves.toList should equal(
+      case UI.DistinctHaves(haves) =>
+        haves.head.haves.toList should equal(
           CardList(
             DeckListCard("Tarmogoyf", 2),
             DeckListCard("Path to Exile", 3)
@@ -207,11 +206,11 @@ class CoreSpec extends FlatSpec with Matchers {
 
     parent
       .fishForMessage(1.second, "") {
-        case WorkerFinished(haves: UI.DistinctMissing[DeckListCard]) => true
-        case _                                                       => false
+        case UI.DistinctMissing(_) => true
+        case _                     => false
       } match {
-      case WorkerFinished(missing: UI.DistinctMissing[DeckListCard]) =>
-        missing.missing.head.missing.toList should equal(
+      case UI.DistinctMissing(missing) =>
+        missing.head.missing.toList should equal(
           CardList(
             DeckListCard("Tarmogoyf", 2),
             DeckListCard("Path to Exile", 1),

@@ -3,14 +3,14 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.FSM
+import cats.Eq
 import cats.data.Writer
 import cats.effect.IO
 import vdx.stockpile.{Card, CardList, Deck, Inventory}
-import vdx.stockpile.Card.DeckListCard
+import vdx.stockpile.Card.{DeckListCard, InventoryCard}
 import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cardlist.CardListOperations
-import vdx.stockpile.cli.UI.WorkerFinished
 import vdx.stockpile.instances.eq._
 
 class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.FileDeckLoader[DeckListCard])
@@ -32,7 +32,7 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
 
   private def loadDecks(file: File) = {
     val (_, decks) = deckLoader.load(file).unsafeRunSync().run
-    context.parent ! WorkerFinished(UI.DecksAreLoaded)
+    context.parent ! UI.DecksAreLoaded
     decks
   }
 
@@ -53,33 +53,28 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
     case Event(LoadDecks(f: File), state: StateData) =>
       stay().using(StateData(state.inventory, loadDecks(f)))
     case Event(DistinctHaves, state: StateData) =>
-      context.parent ! UI.WorkerFinished(
-        UI.DistinctHaves(
-          state.decks.map {
-            case deck: Deck[DeckListCard] =>
-              UI.HavesInDeck(
-                deck.name,
-                intersect(deck.toCardList, state.inventory.get)
-              )
-          }
-        )
+      context.parent ! UI.DistinctHaves(
+        state.deckLists.map { deck =>
+          UI.HavesInDeck(
+            deck.name,
+            intersect(deck.toCardList, state.inventory.get)
+          )
+        }
       )
+
       stay()
     case Event(DistinctMissing, state: StateData) =>
-      context.parent ! UI.WorkerFinished(
-        UI.DistinctMissing(
-          state.decks.map {
-            case deck: Deck[DeckListCard] =>
-              UI.MissingFromDeck(
-                deck.name,
-                difference(deck.toCardList, state.inventory.get)
-              )
-          }
-        )
+      context.parent ! UI.DistinctMissing(
+        state.deckLists.map { deck =>
+          UI.MissingFromDeck(
+            deck.name,
+            difference(deck.toCardList, state.inventory.get)
+          )
+        }
       )
       stay()
     case Event(PrintInventory, ctx: StateData) =>
-      context.parent ! UI.WorkerFinished(UI.InventoryResult(ctx.inventory.get))
+      context.parent ! UI.InventoryResult(ctx.inventory.get)
       stay()
   })
 }
@@ -98,7 +93,7 @@ object Core {
   case object Empty extends Data
   final case class StateData(
     inventory: Option[Inventory],
-    decks: List[Deck[_]]
+    deckLists: List[Deck[DeckListCard]]
   ) extends Data
 
   // Messages

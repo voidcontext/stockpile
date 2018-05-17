@@ -7,13 +7,16 @@ import vdx.stockpile.Card.DeckListCard
 
 class PricerSpec extends FlatSpec with Matchers {
   "Pricer package" should "provide pricing syntactic sugar" in {
+    def priceOf[A <: Card[A]](card: A): CardPrice[A] = CardPrice(card, Price(56.30, EUR, Cardmarket))
+
     implicit val pricer = new PricerAlg[Id] {
       override def getPrice[A <: Card[A]](card: A): Id[CardPrice[A]] = card match {
-        case c: DeckListCard => CardPrice(card, Price(56.30, EUR, Cardmarket))
+        case c: DeckListCard => priceOf(card)
       }
 
     }
 
-    DeckListCard("Tarmogoyf", 1).price shouldBe a[CardPrice[DeckListCard]]
+    val card = DeckListCard("Tarmogoyf", 1)
+    card.price should equal(priceOf(card))
   }
 }

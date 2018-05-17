@@ -3,8 +3,9 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.{ActorRef, ActorRefFactory, FSM}
+import cats.Show
 import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.{Card, CardList}
+import vdx.stockpile.{Card, CardList, DeckList}
 import vdx.stockpile.Inventory.InventoryLog
 import vdx.stockpile.cli.Menu._
 import vdx.stockpile.cli.console.Console
@@ -53,6 +54,10 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
   private def goBack(data: StateData) =
     data match {
       case StateData(head :: tail) => goto(head).using(data.copy(screenStack = tail))
+      case _ =>
+        println("You've wandered too far... Exiting now.")
+        self ! Terminate
+        stay()
     }
 
   when(Uninitialized) {
@@ -104,20 +109,20 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
   }
 
   when(Working) {
-    case Event(WorkerFinished(r: InventoryResult), data: StateData) =>
-      r.inventory.toList.foreach(console.println)
+    case Event(InventoryResult(inventory), data: StateData) =>
+      inventory.toList.foreach(console.println)
       goBack(data)
-    case Event(WorkerFinished(DecksAreLoaded), data: StateData) =>
+    case Event(DecksAreLoaded, data: StateData) =>
       goto(DeckLoadedScreen).using(data)
-    case Event(WorkerFinished(ds: DistinctHaves[DeckListCard]), data: StateData) =>
-      ds.haves.foreach { have =>
-        console.println(have.deckName)
-        have.haves.toList.foreach(console.println)
+    case Event(DistinctHaves(haves), data: StateData) =>
+      haves.foreach { havesInDeck: HavesInDeck[_] =>
+        console.println(havesInDeck.deckName)
+        havesInDeck.haves.toList.foreach(console.println)
         console.println()
       }
       goBack(data)
-    case Event(WorkerFinished(dm: DistinctMissing[DeckListCard]), data: StateData) =>
-      dm.missing.foreach { missing =>
+    case Event(DistinctMissing(missing), data: StateData) =>
+      missing.foreach { missing: MissingFromDeck[_] =>
         console.println(missing.deckName)
         missing.missing.toList.foreach(console.println)
         console.println()
@@ -129,7 +134,7 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
     case Event(Exit, data @ StateData(head :: tail)) =>
       println(" ---> Exit: back")
       goBack(data)
-    case Event(Exit, data: StateData) =>
+    case Event(Exit | Terminate, data: StateData) =>
       println(data)
       println(" ---> Exit: exit")
       context.system.terminate()
@@ -148,18 +153,17 @@ object UI {
   sealed trait WorkerResult
 
   // Worker Results
-  final case class InventoryResult(inventory: vdx.stockpile.Inventory) extends WorkerResult
+  final case class InventoryResult(inventory: vdx.stockpile.Inventory)
   case object DecksAreLoaded extends WorkerResult
   final case class HavesInDeck[A <: Card[A]](deckName: String, haves: CardList[A])
   final case class MissingFromDeck[A <: Card[A]](deckName: String, missing: CardList[A])
-  final case class DistinctHaves[A <: Card[A]](haves: List[HavesInDeck[A]]) extends WorkerResult
-  final case class DistinctMissing[A <: Card[A]](missing: List[MissingFromDeck[A]]) extends WorkerResult
+  final case class DistinctHaves[A <: Card[A]](haves: List[HavesInDeck[A]])
+  final case class DistinctMissing[A <: Card[A]](missing: List[MissingFromDeck[A]])
 
   // State
   sealed trait Screen extends State
   case object Uninitialized extends State
   case object Working extends State
-  final case class WorkerFinished(result: WorkerResult) extends State
 
   // Screens
   case object InventoryOnlyScreen extends Screen
@@ -177,5 +181,6 @@ object UI {
   final case class InventoryAvailable(logs: Seq[InventoryLog]) extends Message
   case object DrawMenu extends Message
   case object Exit extends Message
+  private case object Terminate extends Message
 
 }
