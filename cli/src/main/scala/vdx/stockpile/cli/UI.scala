@@ -9,6 +9,7 @@ import vdx.stockpile.{Card, CardList, DeckList}
 import vdx.stockpile.Inventory.InventoryLog
 import vdx.stockpile.cli.Menu._
 import vdx.stockpile.cli.console.Console
+import vdx.stockpile.pricing.CardPrice
 
 class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FSM[UI.State, UI.Data] {
   import UI._
@@ -92,15 +93,19 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
 
   when(DeckLoadedScreen) {
     case Event(DrawMenu, data: StateData) =>
+      def menuHandler: PartialFunction[MenuItem, Unit] = {
+        case Menu.DistinctHaves =>
+          core ! Core.DistinctHaves
+        case Menu.DistinctMissing =>
+          core ! Core.DistinctMissing
+        case Menu.PriceDistinctMissing =>
+          core ! Core.PriceDistinctMissing
+      }
+
       console.menu(Menu.decks)(
         appendDefaultHandlers(
-          {
-            case Menu.DistinctHaves =>
-              core ! Core.DistinctHaves
-              enterWorkingState(DeckLoadedScreen, data)
-            case Menu.DistinctMissing =>
-              core ! Core.DistinctMissing
-              enterWorkingState(DeckLoadedScreen, data)
+          menuHandler.andThen[State] { _ =>
+            enterWorkingState(DeckLoadedScreen, data)
           },
           DeckLoadedScreen,
           data
@@ -108,30 +113,39 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
       )
   }
 
-  when(Working) {
-    case Event(InventoryResult(inventory), data: StateData) =>
+  def resultHandler: PartialFunction[Event, Unit] = {
+    case Event(InventoryResult(inventory), _) =>
       inventory.toList.foreach(console.println)
-      goBack(data)
-    case Event(DecksAreLoaded, data: StateData) =>
-      goto(DeckLoadedScreen).using(data)
-    case Event(DistinctHaves(haves), data: StateData) =>
+    case Event(DistinctHaves(haves), _) =>
       haves.foreach { havesInDeck: HavesInDeck[_] =>
         console.println(havesInDeck.deckName)
         havesInDeck.haves.toList.foreach(console.println)
         console.println()
       }
-      goBack(data)
-    case Event(DistinctMissing(missing), data: StateData) =>
+    case Event(DistinctMissing(missing), _) =>
       missing.foreach { missing: MissingFromDeck[_] =>
         console.println(missing.deckName)
         missing.missing.toList.foreach(console.println)
         console.println()
       }
-      goBack(data)
+    case Event(DistinctMissingPrices(deckPrices), _) =>
+      deckPrices.foreach { deckPrice: DeckPrice[_] =>
+        console.println(deckPrice.deckName)
+        deckPrice.prices.foreach(console.println)
+        console.println()
+      }
+  }
+
+  def notificationHandler: PartialFunction[Event, State] = {
+    case Event(DecksAreLoaded, data: StateData) => goto(DeckLoadedScreen).using(data)
+  }
+
+  when(Working) {
+    case e @ Event(_, data: StateData) => resultHandler.andThen(_ => goBack(data)).orElse(notificationHandler)(e)
   }
 
   whenUnhandled {
-    case Event(Exit, data @ StateData(head :: tail)) =>
+    case Event(Exit, data @ StateData(_)) =>
       println(" ---> Exit: back")
       goBack(data)
     case Event(Exit | Terminate, data: StateData) =>
@@ -150,15 +164,17 @@ object UI {
   sealed trait State
   sealed trait Data
   sealed trait Message
-  sealed trait WorkerResult
 
   // Worker Results
-  final case class InventoryResult(inventory: vdx.stockpile.Inventory)
-  case object DecksAreLoaded extends WorkerResult
   final case class HavesInDeck[A <: Card[A]](deckName: String, haves: CardList[A])
   final case class MissingFromDeck[A <: Card[A]](deckName: String, missing: CardList[A])
+  final case class DeckPrice[A <: Card[A]](deckName: String, prices: List[CardPrice[A]])
+
+  final case class InventoryResult(inventory: vdx.stockpile.Inventory)
+  case object DecksAreLoaded
   final case class DistinctHaves[A <: Card[A]](haves: List[HavesInDeck[A]])
   final case class DistinctMissing[A <: Card[A]](missing: List[MissingFromDeck[A]])
+  final case class DistinctMissingPrices[A <: Card[A]](deckPrices: List[DeckPrice[A]])
 
   // State
   sealed trait Screen extends State

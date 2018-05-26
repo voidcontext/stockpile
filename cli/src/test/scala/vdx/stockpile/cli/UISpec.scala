@@ -9,9 +9,10 @@ import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Inventory.InventoryError
 import vdx.stockpile.cli.Core.DistinctHaves
 import vdx.stockpile.cli.Menu.MenuItem
-import vdx.stockpile.cli.UI.{DecksAreLoaded, HavesInDeck, MissingFromDeck}
+import vdx.stockpile.cli.UI.{DeckPrice, DecksAreLoaded, HavesInDeck, MissingFromDeck}
 import vdx.stockpile.cli.console.Console
 import vdx.stockpile.instances.eq._
+import vdx.stockpile.pricing.{CardPrice, Cardmarket, EUR, Price}
 import vdx.stockpile.{CardList, Inventory}
 
 import scala.concurrent.Await
@@ -279,5 +280,35 @@ class UISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     ui ! UI.DistinctMissing(List(MissingFromDeck("Dummy deck", CardList(card))))
 
     console.printedLines should equal(Vector("Dummy deck", card.toString, ""))
+  }
+
+  private def distinctMissingPricer() = {
+    val console = new ConsoleMock(List(Menu.LoadDecksFromDir, Menu.PriceDistinctMissing, Menu.Nop), List("decks"))
+    val (probe, ui) = fsm(console)
+
+    ui ! UI.InventoryAvailable(Vector.empty)
+    ui ! UI.DecksAreLoaded
+
+    (probe, ui, console)
+  }
+  "UI :: DistinctMissingPricer" should "delegate the work to the core actor" in {
+    val (probe, _, _) = distinctMissingPricer()
+
+    probe.fishForMessage(1.second) {
+      case Core.PriceDistinctMissing => true
+      case _                         => false
+    } should equal(Core.PriceDistinctMissing)
+  }
+
+  it should "print the result" in {
+    val (_, ui, console) = distinctMissing()
+
+    val card = DeckListCard("Tarmogoyf", 4)
+    val cardPrice = CardPrice(card, Price(56, EUR, Cardmarket))
+    val deckPrice = DeckPrice("A deck", List(cardPrice))
+
+    ui ! UI.DistinctMissingPrices(List(deckPrice))
+
+    console.printedLines should equal(Vector("A deck", cardPrice.toString, ""))
   }
 }

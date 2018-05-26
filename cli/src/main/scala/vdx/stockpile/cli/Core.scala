@@ -101,6 +101,7 @@ object Core {
   final case class LoadDecks(file: File) extends Message
   case object DistinctHaves extends Message
   case object DistinctMissing extends Message
+  case object PriceDistinctMissing extends Message
   case object PrintInventory extends Message
   case object Exit extends Message
 
@@ -108,4 +109,5 @@ object Core {
   private[cli] trait FileDeckLoader[A <: Card[A]] {
     def load(file: File): IO[FileDeckLoaderResult[A]]
   }
+
 }

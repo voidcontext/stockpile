@@ -35,26 +35,6 @@ private[cardmarket] class AuthorisationHeaderBuilder() {
         .encode(string, "UTF-8")
         .replaceAll("\\+", "%20")
 
-    def splitQueryString(query: String) = {
-      println(query)
-      val kv = query match {
-        case "" => List()
-        case _ =>
-          query
-            .split('&')
-            .map { kv: String =>
-              println(kv)
-              val fragments = kv.split("=").toList
-
-              (fragments.head, fragments.tail.mkString("="))
-            }
-            .toList
-      }
-
-      println(kv)
-      kv
-    }
-
     val parsedUrl = com.netaporter.uri.Uri.parse(uri)
 
     val requestUrl = parsedUrl.removeAllParams().toString
@@ -80,19 +60,17 @@ private[cardmarket] class AuthorisationHeaderBuilder() {
     }
 
     val paramString = (
-      queryParamTuples ++ //(splitQueryString(body)  map { t => (t._1, urlEncode(t._2)) }) ++
-        (
-          List(
-            ("oauth_consumer_key", oauthConsumerKey),
-            ("oauth_nonce", oauthNonce),
-            ("oauth_signature_method", oauthSignatureMethod),
-            ("oauth_timestamp", oauthTimestamp),
-            ("oauth_token", oauthToken),
-            ("oauth_version", oauthVersion)
-          ).map { t =>
-            (t._1, urlEncode(t._2))
-          }
-        )
+      queryParamTuples ++
+        List(
+          ("oauth_consumer_key", oauthConsumerKey),
+          ("oauth_nonce", oauthNonce),
+          ("oauth_signature_method", oauthSignatureMethod),
+          ("oauth_timestamp", oauthTimestamp),
+          ("oauth_token", oauthToken),
+          ("oauth_version", oauthVersion)
+        ).map { t =>
+          (t._1, urlEncode(t._2))
+        }
     ).sortWith((a, b) => {
         a._1.compareTo(b._1) match {
           case 0          => a._2.compareTo(b._2) < 0
