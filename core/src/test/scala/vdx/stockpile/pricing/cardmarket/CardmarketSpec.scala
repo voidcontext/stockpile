@@ -12,7 +12,7 @@ trait CardmarketSpec {
   val IdProduct1 = 1337
   val IdProduct2 = 1338
 
-  def service(cb: Request[IO] => Unit = (_) => Unit): IO[Client[IO]] = {
+  def service(cb: Request[IO] => Unit = _ => Unit): IO[Client[IO]] = {
     val hs = HttpService[IO] {
       case r @ GET -> Root / "ws" / "v2.0" / "output.json" / "products" / "find" =>
         cb(r)

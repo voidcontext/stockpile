@@ -77,6 +77,7 @@ package object cardmarket {
     else 1
 
   implicit class DetailedProductOps(detailedProduct: DetailedProduct) {
-    def toCardPrice[A <: Card[A]](card: A) = CardPrice(card, Price(detailedProduct.priceGuide.TREND, EUR, Cardmarket))
+    def toCardPrice[A <: Card[A]](card: A): CardPrice[A] =
+      CardPrice(card, Price(detailedProduct.priceGuide.TREND, EUR, Cardmarket))
   }
 }
