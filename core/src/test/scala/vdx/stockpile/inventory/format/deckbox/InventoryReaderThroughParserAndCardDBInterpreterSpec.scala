@@ -9,8 +9,10 @@ import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.PreReleaseFoil
 import vdx.stockpile.CardDB
 import vdx.stockpile.CardDB.{RepositoryAlg, SimpleSet}
+import vdx.stockpile.cardlist.CardListInstances
+import cats.syntax.foldable._
 
-class InventoryReaderThroughParserAndCardDBInterpreterSpec extends FlatSpec with Matchers {
+class InventoryReaderThroughParserAndCardDBInterpreterSpec extends FlatSpec with Matchers with CardListInstances {
   val db = new RepositoryAlg[IO] {
     override def findSimpleSetByName(name: String): IO[Option[CardDB.SimpleSet]] =
       IO({

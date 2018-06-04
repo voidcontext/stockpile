@@ -1,10 +1,10 @@
 package vdx.stockpile.deck.format.decklist
 
 import cats.Id
+import cats.syntax.foldable._
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.instances.eq._
-import vdx.stockpile.{CardList, Deck, SampleDeck}
+import vdx.stockpile.{Deck, SampleDeck}
 
 class DecklistFromStringInterpreterSpec extends FlatSpec with Matchers with SampleDeck {
   val decklist = scala.io.Source.fromResource(sampleDeckResource).mkString

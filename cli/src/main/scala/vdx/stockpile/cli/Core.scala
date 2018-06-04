@@ -8,8 +8,9 @@ import cats.effect.IO
 import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
-import vdx.stockpile.cardlist.CardListOperations
-import vdx.stockpile.{Card, CardList, Deck, Inventory}
+import vdx.stockpile.cardlist.{CardList, CardListOperations}
+import vdx.stockpile.instances.eq._
+import vdx.stockpile.{Card, Deck, Inventory}
 
 class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.FileDeckLoader[DeckListCard])
     extends FSM[Core.State, Core.Data]

@@ -2,6 +2,7 @@ package vdx.stockpile
 
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card._
+import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.instances.eq._
 
 class CardSpec extends FlatSpec with Matchers {

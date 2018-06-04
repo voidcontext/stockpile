@@ -3,12 +3,13 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.{ActorRef, ActorRefFactory, FSM}
-import cats.Show
-import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.{Card, CardList, DeckList}
+import cats.syntax.foldable._
+import vdx.stockpile.Card
 import vdx.stockpile.Inventory.InventoryLog
+import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.cli.Menu._
 import vdx.stockpile.cli.console.Console
+import vdx.stockpile.instances.cardlist._
 import vdx.stockpile.pricing.CardPrice
 
 class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FSM[UI.State, UI.Data] {

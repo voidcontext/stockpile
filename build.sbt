@@ -69,6 +69,8 @@ lazy val core = module("core")
        "com.nrinaudo" %% "kantan.csv" % "0.4.0", // csv parser + writer
 
        "org.scalatest" %% "scalatest" % scalatestVersion % "it,test",
+       "org.typelevel" %% "cats-laws" % catsVersion % Test,
+       "org.scalacheck" %% "scalacheck" % "1.14.0" % Test,
      ),
   )
 

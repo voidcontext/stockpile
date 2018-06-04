@@ -3,8 +3,10 @@ package vdx.stockpile.cardlist
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile._
+import vdx.stockpile.instances.eq._
+import cats.syntax.foldable._
 
-class CardListOperationsSpec extends FlatSpec with Matchers with CardListOperations {
+class CardListOperationsSpec extends FlatSpec with Matchers with CardListOperations with CardListInstances {
 
   val deck: DeckListDeck = Deck(
     "dummy deck",

@@ -1,9 +1,10 @@
 package vdx.stockpile
 
 import vdx.stockpile.Card.DeckListCard
+import vdx.stockpile.cardlist.{CardList, CardListInstances}
 import vdx.stockpile.instances.eq._
 
-trait SampleDeck {
+trait SampleDeck extends CardListInstances {
   val sampleDeckResource = "decklist.txt"
 
   val sampleDeck = Deck(

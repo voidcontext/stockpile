@@ -2,6 +2,8 @@ package vdx.stockpile
 
 import cats.Eq
 import cats.data.Writer
+import cats.syntax.monoid._
+import vdx.stockpile.cardlist.{CardList, CardListMonoid}
 
 final case class Deck[A <: Card[A]](
   name: String,
@@ -9,8 +11,8 @@ final case class Deck[A <: Card[A]](
   sideBoard: CardList[A] = CardList.empty[A],
   maybeBoard: CardList[A] = CardList.empty[A]
 ) {
-  def toCardList(implicit eq: Eq[A]): CardList[A] = mainBoard.combine(sideBoard).combine(maybeBoard)
-
+  def toCardList(implicit eq: Eq[A], clm: CardListMonoid[A]): CardList[A] =
+    mainBoard |+| sideBoard |+| maybeBoard
 }
 
 object Deck {

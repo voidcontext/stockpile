@@ -14,7 +14,8 @@ import vdx.stockpile.Card._
 import vdx.stockpile.CardDB.{RepositoryAlg, SimpleSet}
 import vdx.stockpile.Inventory._
 import vdx.stockpile.instances.eq._
-import vdx.stockpile.{CardList, Inventory}
+import vdx.stockpile.Inventory
+import vdx.stockpile.cardlist.{CardList, CardListMonoid}
 
 package object deckbox {
   final case class RawDeckboxCard(
@@ -62,7 +63,8 @@ package object deckbox {
   class InventoryReaderThroughParserAndCardDBInterpreter[F[_]: Monad](
     parser: CsvParserAlg[F],
     db: RepositoryAlg[F]
-  ) extends InventoryLoaderAlg[F] {
+  )(implicit clm: CardListMonoid[InventoryCard])
+      extends InventoryLoaderAlg[F] {
 
     private type CSVResult = ReadResult[RawDeckboxCard]
     private type ValidatedResult = Validated[InventoryLog, (RawDeckboxCard, SimpleSet)]
@@ -91,7 +93,8 @@ package object deckbox {
       }
 
       def appendRawCardToList(inventory: Inventory, card: RawDeckboxCard, set: SimpleSet) =
-        inventory.combine(
+        clm.combine(
+          inventory,
           CardList(
             InventoryCard(card.name, card.count, Edition(set.code), foil(card.foil, card.edition))
           )

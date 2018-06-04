@@ -1,9 +1,7 @@
 package vdx.stockpile.deck.format.decklist
 
-import java.io.File
-
-import cats.Id
 import cats.effect.IO
+import cats.syntax.foldable._
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.{Deck, SampleDeck}

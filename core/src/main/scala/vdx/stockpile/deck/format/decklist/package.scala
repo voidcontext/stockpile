@@ -1,16 +1,14 @@
 package vdx.stockpile.deck.format
 
-import java.io.File
-
-import cats.{Applicative, Monad}
 import cats.data.Writer
 import cats.effect.IO
 import cats.implicits._
-import cats.syntax.applicative._
+import cats.{Applicative, Monad}
 import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.{CardList, Deck}
+import vdx.stockpile.Deck
 import vdx.stockpile.Deck.{DeckLoaderAlg, DeckLoaderResult, DeckLog, ParserError}
-import vdx.stockpile.instances.eq._
+import vdx.stockpile.cardlist.{CardList, CardListFoldable, CardListMonoid}
+import vdx.stockpile.instances.cardlist._
 
 import scala.io.Source
 import scala.util.matching.Regex
@@ -26,15 +24,18 @@ package object decklist {
 
   }
 
-  class DecklistFromStringInterpreter[F[_]: Monad](name: String, deckList: String)
-      extends DeckLoaderAlg[F, DeckListCard] {
+  class DecklistFromStringInterpreter[F[_]: Monad](name: String, deckList: String)(
+    implicit clf: CardListFoldable,
+    clm: CardListMonoid[DeckListCard]
+  ) extends DeckLoaderAlg[F, DeckListCard] {
     private def lineRegex = """^(\d+)(x|) (.*)$""".r
 
     type Logged[A] = Writer[Vector[DeckLog], A]
 
     private def matchesToCard(regexMatch: Regex.Match) = DeckListCard(regexMatch.group(3), regexMatch.group(1).toInt)
 
-    private def count(list: CardList[DeckListCard]) = list.foldLeft(0)((count, card) => count + card.count)
+    private def count(list: CardList[DeckListCard]) =
+      clf.foldLeft(list, 0)((count, card) => count + card.count)
 
     override def load: F[DeckLoaderResult[DeckListCard]] =
       Applicative[F].pure(
@@ -47,9 +48,9 @@ package object decklist {
                   w.map(
                     deck =>
                       if (count(deck.mainBoard) < 60) {
-                        deck.copy(mainBoard = deck.mainBoard.combine(CardList(matchesToCard(regexMatch))))
+                        deck.copy(mainBoard = clm.combine(deck.mainBoard, CardList(matchesToCard(regexMatch))))
                       } else {
-                        deck.copy(sideBoard = deck.sideBoard.combine(CardList(matchesToCard(regexMatch))))
+                        deck.copy(sideBoard = clm.combine(deck.sideBoard, CardList(matchesToCard(regexMatch))))
                     }
                   )
                 case None =>

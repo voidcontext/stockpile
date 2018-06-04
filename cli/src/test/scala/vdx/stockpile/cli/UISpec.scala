@@ -4,15 +4,17 @@ import java.io.File
 
 import akka.actor.ActorSystem
 import akka.testkit.{TestFSMRef, TestProbe}
+import cats.syntax.foldable._
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
+import vdx.stockpile.Inventory
 import vdx.stockpile.Inventory.InventoryError
+import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.cli.Menu.MenuItem
 import vdx.stockpile.cli.UI.{DeckPrice, HavesInDeck, MissingFromDeck}
 import vdx.stockpile.cli.console.Console
 import vdx.stockpile.instances.eq._
 import vdx.stockpile.pricing.{CardPrice, Cardmarket, EUR, Price}
-import vdx.stockpile.{CardList, Inventory}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

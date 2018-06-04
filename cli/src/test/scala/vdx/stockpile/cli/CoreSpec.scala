@@ -11,9 +11,10 @@ import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
 import vdx.stockpile.Inventory.{InventoryError, InventoryLog}
+import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
 import vdx.stockpile.instances.eq._
-import vdx.stockpile.{CardList, Deck, Inventory}
+import vdx.stockpile.{Deck, Inventory}
 
 import scala.concurrent.duration._
 

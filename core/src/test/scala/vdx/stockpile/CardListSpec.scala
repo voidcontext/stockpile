@@ -3,14 +3,17 @@ package vdx.stockpile
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, InventoryCard}
 import vdx.stockpile.instances.eq._
+import cats.syntax.monoid._
+import cats.syntax.foldable._
+import vdx.stockpile.cardlist.{CardList, CardListInstances}
 
-class CardListSpec extends FlatSpec with Matchers {
+class CardListSpec extends FlatSpec with Matchers with CardListInstances {
   val card = DeckListCard("Thought-Knot Seer", 1)
 
   "CardList()" should "instantiate an empty card list" in {
-    val list = CardList()
+    val list = CardList[DeckListCard]()
 
-    list.toList shouldBe empty
+    list.isEmpty should be(true)
   }
 
   "CardList(card)" should "add a single card" in {
@@ -22,12 +25,12 @@ class CardListSpec extends FlatSpec with Matchers {
   it should "add the given card" in {
     val list = CardList(card)
 
-    list.toList.head should equal(card)
+    list.toList should equal(List(card))
   }
   "CardList.combine()" should "combine 2 empty lists" in {
-    val list = CardList[InventoryCard]().combine(CardList())
+    val list = CardList[InventoryCard]() |+| CardList[InventoryCard]()
 
-    list.toList shouldBe empty
+    list.isEmpty should be(true)
   }
 
   it should "add increase the count of a card when the same card is combined" in {
@@ -52,15 +55,15 @@ class CardListSpec extends FlatSpec with Matchers {
     )
   }
 
-  "Cardlist.contains(card)" should "return false when a card is not in the list" in {
-    val list = CardList[DeckListCard]()
-
-    list.contains(card) should be(false)
-  }
-
-  it should "return true when a card is in the list" in {
-    val list = CardList(card)
-
-    list.contains(card) should be(true)
-  }
+//  "Cardlist.contains(card)" should "return false when a card is not in the list" in {
+//    val list = CardList[DeckListCard]()
+//
+//    list.contains(card) should be(false)
+//  }
+//
+//  it should "return true when a card is in the list" in {
+//    val list = CardList(card)
+//
+//    list.contains(card) should be(true)
+//  }
 }

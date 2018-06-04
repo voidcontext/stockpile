@@ -8,11 +8,12 @@ import cats.effect.IO
 import cats.implicits._
 import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.Deck
-import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
+import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
 import vdx.stockpile.cli.console.Terminal
 import vdx.stockpile.deck.format.decklist.DeckListFromFileIOInterpreter
+import vdx.stockpile.instances.cardlist._
 import vdx.stockpile.inventory.format.deckbox.{IOCsvParserInterpreter, InventoryReaderThroughParserAndCardDBInterpreter}
 import vdx.stockpile.mgjson.MtgJsonDBInterpreter
 
