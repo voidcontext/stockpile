@@ -1,7 +1,7 @@
 package vdx
 
 import vdx.stockpile.Card.{DeckListCard, InventoryCard, WantsListCard}
-import vdx.stockpile.cardlist.CardList
+import vdx.stockpile.cardlist.{CardList, CardListFoldable, CardListMonoid}
 
 package object stockpile {
 
@@ -17,4 +17,5 @@ package object stockpile {
     def cardsOwned(inventory: Inventory, deckList: DeckList): DeckList
     def cardsToBuy(inventory: Inventory, deckList: DeckList): DeckList
   }
+
 }

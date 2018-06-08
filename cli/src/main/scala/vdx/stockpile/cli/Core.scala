@@ -8,13 +8,12 @@ import cats.effect.IO
 import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
-import vdx.stockpile.cardlist.{CardList, CardListOperations}
 import vdx.stockpile.instances.eq._
-import vdx.stockpile.{Card, Deck, Inventory}
+import vdx.stockpile.{Card, Deck, Inventory, InventoryInterpreter}
 
 class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.FileDeckLoader[DeckListCard])
     extends FSM[Core.State, Core.Data]
-    with CardListOperations {
+    with InventoryInterpreter {
 
   import Core._
 
@@ -35,14 +34,6 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
     decks
   }
 
-  private def intersect[A <: Card[A], B <: Card[B]](list: CardList[A], other: CardList[B])(
-    implicit i: Intersection[A, B, A]
-  ) = i(list, other)
-
-  private def difference[A <: Card[A], B <: Card[B]](list: CardList[A], other: CardList[B])(
-    implicit d: Difference[A, B, A]
-  ) = d(list, other)
-
   when(Uninitialized) {
     case Event(LoadInventory(file), Empty) =>
       goto(InventoryLoaded).using(StateData(Option(load(file)), List.empty))
@@ -56,7 +47,7 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
         state.deckLists.map { deck =>
           UI.HavesInDeck(
             deck.name,
-            intersect(deck.toCardList, state.inventory.get)
+            cardsOwned(state.inventory.get, deck.toCardList)
           )
         }
       )
@@ -67,7 +58,7 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
         state.deckLists.map { deck =>
           UI.MissingFromDeck(
             deck.name,
-            difference(deck.toCardList, state.inventory.get)
+            cardsToBuy(state.inventory.get, deck.toCardList)
           )
         }
       )
