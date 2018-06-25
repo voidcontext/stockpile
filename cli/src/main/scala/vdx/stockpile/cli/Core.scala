@@ -3,15 +3,13 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.FSM
-import cats.Eq
 import cats.data.Writer
 import cats.effect.IO
-import vdx.stockpile.{Card, CardList, Deck, Inventory}
-import vdx.stockpile.Card.{DeckListCard, InventoryCard}
-import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
+import vdx.stockpile.Card.DeckListCard
+import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cardlist.CardListOperations
-import vdx.stockpile.instances.eq._
+import vdx.stockpile.{Card, CardList, Deck, Inventory}
 
 class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.FileDeckLoader[DeckListCard])
     extends FSM[Core.State, Core.Data]

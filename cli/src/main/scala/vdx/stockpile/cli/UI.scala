@@ -35,6 +35,7 @@ class UI(childFactory: ActorRefFactory => ActorRef, console: Console) extends FS
       self ! Exit
       stay()
   }
+
   private def runAction: PartialFunction[Action, Unit] = {
     case Menu.InventoryExportTerminal => core ! Core.PrintInventory
   }
