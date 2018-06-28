@@ -1,7 +1,8 @@
 package vdx
 
+import cats.Monad
 import vdx.stockpile.Card.{DeckListCard, InventoryCard, WantsListCard}
-import vdx.stockpile.cardlist.{CardList, CardListFoldable, CardListMonoid}
+import vdx.stockpile.cardlist.CardList
 
 package object stockpile {
 
@@ -13,9 +14,9 @@ package object stockpile {
   type DeckListDeck = Deck[DeckListCard]
   type BuiltDeck = Deck[InventoryCard]
 
-  trait InventoryAlgebra[Inventory, DeckList, BuiltDeck] {
-    def cardsOwned(inventory: Inventory, deckList: DeckList): DeckList
-    def cardsToBuy(inventory: Inventory, deckList: DeckList): DeckList
+  trait InventoryAlgebra[F[_], Inventory, DeckList, BuiltDeck] {
+    def cardsOwned(inventory: Inventory, deckList: DeckList): F[DeckList]
+    def cardsToBuy(inventory: Inventory, deckList: DeckList): F[DeckList]
   }
 
 }

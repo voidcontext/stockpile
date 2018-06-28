@@ -1,6 +1,7 @@
 package vdx.stockpile
 
 import cats.syntax.foldable._
+import cats.syntax.functor._
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.cardlist.CardList
@@ -23,13 +24,13 @@ class InventoryInterpreterSpec extends FlatSpec with Matchers with InventoryInte
   )
 
   "cardsOwned" should "return the owned cards" in {
-    cardsOwned(inventory, deck.toCardList).toList should equal(
+    cardsOwned(inventory, deck.toCardList).map(_.toList) should equal(
       CardList(DeckListCard("Thought-Knot Seer", 4), DeckListCard("Reality Smasher", 2)).toList
     )
   }
 
   "cardsToBuy" should "return the missing cards" in {
-    cardsToBuy(inventory, deck.toCardList).toList should equal(
+    cardsToBuy(inventory, deck.toCardList).map(_.toList) should equal(
       CardList(DeckListCard("Reality Smasher", 2), DeckListCard("Eldrazi Temple", 4)).toList
     )
   }

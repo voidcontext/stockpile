@@ -12,6 +12,8 @@ class CardListMonoid[A <: Card[A]](implicit eq: Eq[A]) extends Monoid[CardList[A
     x: CardList[A],
     y: CardList[A]
   ): CardList[A] = y.cards.foldLeft(x) { (list, card) =>
+    def addToSetIfNotEmpty(set: Set[A], card: A) = if (card.count > 0) set + card else set
+
     def appendTo(set: Set[A], card: A) = {
       set.foldLeft(CombineResult(Set.empty[A], Some(card))) { (result, card) =>
         val (toAdd, remaining) = result.card
@@ -21,14 +23,14 @@ class CardListMonoid[A <: Card[A]](implicit eq: Eq[A]) extends Monoid[CardList[A
           }
           .getOrElse((card, None))
 
-        CombineResult(result.list + toAdd, remaining)
+        CombineResult(addToSetIfNotEmpty(result.list, toAdd), remaining)
       }
     }
 
     CardList(
       appendTo(list.cards, card) match {
-        case CombineResult(l, Some(c)) => l + c
-        case CombineResult(l, _)       => l
+        case CombineResult(l, Some(c)) if c.count > 0 => l + c
+        case CombineResult(l, _)                      => l
       }
     )
   }

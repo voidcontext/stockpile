@@ -1,7 +1,7 @@
 package vdx.stockpile.cardlist
 
 import cats.syntax.monoid._
-import cats.{Eq, Eval, Foldable, Monoid}
+import cats.{Eq, Monoid}
 import vdx.stockpile.Card
 
 sealed trait CardList[A] {

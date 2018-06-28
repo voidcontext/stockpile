@@ -1,5 +1,6 @@
 package vdx.stockpile.cardlist
 
+import cats.kernel.CommutativeMonoid
 import org.scalacheck.{Arbitrary, Gen}
 import vdx.stockpile.Card._
 import vdx.stockpile.instances.eq._

@@ -7,5 +7,5 @@ import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.instances.cardlist.cardListFoldable
 
 class CardListFoldableSpec extends FunSuite with Discipline with CardListSuite {
-//  checkAll("CardListFoldable", FoldableTests[CardList].foldable[DeckListCard, DeckListCard])
+//  checkAll("CardListFoldable", FoldableTests[CardList].foldable[DeckListCard, Int])
 }
