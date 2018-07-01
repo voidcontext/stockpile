@@ -4,17 +4,18 @@ import java.io.File
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestFSMRef, TestProbe}
+import cats.Id
 import cats.data.Writer
 import cats.effect.IO
 import cats.implicits._
 import org.scalatest.{FlatSpec, Matchers}
 import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.Deck.{DeckLoaderResult, DeckLog}
-import vdx.stockpile.Inventory.{InventoryError, InventoryLog}
+import vdx.stockpile.Inventory.{InventoryError, InventoryLoaderResult, InventoryLog}
 import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
 import vdx.stockpile.instances.eq._
-import vdx.stockpile.{Deck, Inventory}
+import vdx.stockpile.{Deck, Inventory, InventoryInterpreter}
 
 import scala.concurrent.duration._
 
@@ -24,28 +25,39 @@ class CoreSpec extends FlatSpec with Matchers {
 
   implicit val system: ActorSystem = ActorSystem("test")
 
-  private def defaultLoader(inventory: Inventory = CardList.empty[InventoryCard]) =
-    (f: File) => IO({ inventory.pure[LoggedInventory] })
+  implicit val idExtractor: Extractor[Id] = new Extractor[Id] {
+    override def extract[A](fa: Id[A]): A = fa
+  }
+
+  private def defaultLoader(
+    inventory: Inventory = CardList.empty[InventoryCard]
+  ): File => Id[LoggedInventory[Inventory]] =
+    (f: File) => inventory.pure[LoggedInventory]
 
   private def defaultDeckLoader(decks: List[Deck[DeckListCard]] = List.empty) =
-    new FileDeckLoader[DeckListCard] {
+    new FileDeckLoader[DeckListCard, Id] {
       var _decks = decks
 
-      override def load(file: File): IO[FileDeckLoaderResult[DeckListCard]] = _decks match {
+      override def load(file: File): Id[FileDeckLoaderResult[DeckListCard]] = _decks match {
         case head :: tail =>
           _decks = tail
-          List(head).pure[LoggedDeck].pure[IO]
+          List(head).pure[LoggedDeck].pure[Id]
         case _ => fail()
       }
     }
 
-  private def fsm(inventory: Inventory = CardList.empty[InventoryCard], decks: List[Deck[DeckListCard]] = List.empty) =
-    TestFSMRef(
-      new Core(
-        defaultLoader(inventory),
-        defaultDeckLoader(decks)
-      )
+  private def fsm(
+    inventory: Inventory = CardList.empty[InventoryCard],
+    decks: List[Deck[DeckListCard]] = List.empty
+  ): TestFSMRef[Core.State, Core.Data, Core[Id, Id]] = {
+    implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
+      defaultLoader(inventory),
+      defaultDeckLoader(decks),
+      new InventoryInterpreter {}
     )
+
+    TestFSMRef(new Core())
+  }
 
   "Core" should "start in Unintialised state" in {
     val core = fsm()
@@ -74,16 +86,15 @@ class CoreSpec extends FlatSpec with Matchers {
   it should "notify it's parent when the inventory is loaded" in {
     val parent = TestProbe()
     val logs = Vector(InventoryError("Warning 1"), InventoryError("Warning 2"))
-    val core =
-      parent.childActorOf(
-        Props(
-          classOf[Core],
-          (f: File) => IO({ CardList.empty[InventoryCard].writer(logs) }),
-          new FileDeckLoader[DeckListCard] {
-            override def load(file: File): IO[FileDeckLoaderResult[DeckListCard]] = ???
-          }
-        )
-      )
+
+    implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext[Id, Id](
+      (f: File) => CardList.empty[InventoryCard].writer(logs),
+      (file: File) => ???,
+      new InventoryInterpreter {}
+    )
+
+    val core = parent.childActorOf(Props(new Core[Id, Id]()))
+
     parent.send(core, Core.LoadInventory(new File("")))
 
     parent.fishForMessage(1.second, "") {
@@ -101,10 +112,15 @@ class CoreSpec extends FlatSpec with Matchers {
   }
 
   it should "notify it's parent when a result is available" in {
+    implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
+      defaultLoader(),
+      (file: File) => ???,
+      new InventoryInterpreter {}
+    )
+
     val parent = TestProbe()
-    val core = parent.childActorOf(Props(classOf[Core], defaultLoader(), new FileDeckLoader[DeckListCard] {
-      override def load(file: File): IO[FileDeckLoaderResult[DeckListCard]] = ???
-    }))
+    val core = parent.childActorOf(Props(new Core[Id, Id]()))
+
     parent.send(core, Core.LoadInventory(new File("")))
     parent.send(core, Core.PrintInventory)
 
@@ -136,11 +152,17 @@ class CoreSpec extends FlatSpec with Matchers {
   }
 
   it should "notify it's parent when the decks are loaded" in {
-    val parent = TestProbe()
     val mainBoard = CardList(DeckListCard("Tarmogoyf", 4), DeckListCard("Path to Exile", 4))
-    val core = parent.childActorOf(
-      Props(classOf[Core], defaultLoader(), defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))))
+
+    implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
+      defaultLoader(),
+      defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))),
+      new InventoryInterpreter {}
     )
+
+    val parent = TestProbe()
+
+    val core = parent.childActorOf(Props(new Core[Id, Id]()))
 
     parent.send(core, Core.LoadInventory(new File("")))
     core ! Core.LoadDecks(new File(""))
@@ -161,9 +183,13 @@ class CoreSpec extends FlatSpec with Matchers {
       InventoryCard("Cavern of Souls", 3, Edition("MM3"), NonFoil)
     )
 
-    val core = parent.childActorOf(
-      Props(classOf[Core], defaultLoader(inventory), defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))))
+    implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
+      defaultLoader(inventory),
+      defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))),
+      new InventoryInterpreter {}
     )
+
+    val core = parent.childActorOf(Props(new Core[Id, Id]()))
 
     core ! Core.LoadInventory(new File(""))
     core ! Core.LoadDecks(new File(""))
@@ -196,9 +222,13 @@ class CoreSpec extends FlatSpec with Matchers {
       InventoryCard("Cavern of Souls", 3, Edition("MM3"), NonFoil)
     )
 
-    val core = parent.childActorOf(
-      Props(classOf[Core], defaultLoader(inventory), defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))))
+    implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
+      defaultLoader(inventory),
+      defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))),
+      new InventoryInterpreter {}
     )
+
+    val core = parent.childActorOf(Props(new Core[Id, Id]()))
 
     core ! Core.LoadInventory(new File(""))
     core ! Core.LoadDecks(new File(""))

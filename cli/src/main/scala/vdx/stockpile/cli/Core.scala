@@ -3,18 +3,20 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.FSM
-import cats.Monad
 import cats.data.Writer
-import cats.effect.IO
+import cats.instances.list._
+import cats.syntax.functor._
+import cats.syntax.traverse._
+import cats.Monad
 import vdx.stockpile.Card.DeckListCard
 import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
-import vdx.stockpile.instances.eq._
 import vdx.stockpile._
+import vdx.stockpile.instances.eq._
+import vdx.stockpile.cli.Extractor.syntax._
 
-class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.FileDeckLoader[DeckListCard])
-    extends FSM[Core.State, Core.Data]
-    with InventoryInterpreter {
+class Core[F[_]: Monad: Extractor, G[_]: Monad: Extractor]()(implicit cCtx: Core.CoreContext[F, G])
+    extends FSM[Core.State, Core.Data] {
 
   import Core._
 
@@ -24,13 +26,13 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
     pf.orElse({ case Event(Exit, _) => stop() })
 
   private def load(file: File) = {
-    val (logs, inventory) = loadInventory(file).unsafeRunSync().run
+    val (logs, inventory) = cCtx.inventoryLoader(file).extract.run
     context.parent ! UI.InventoryAvailable(logs)
     inventory
   }
 
   private def loadDecks(file: File) = {
-    val (_, decks) = deckLoader.load(file).unsafeRunSync().run
+    val (_, decks) = cCtx.deckLoader.load(file).extract.run
     context.parent ! UI.DecksAreLoaded
     decks
   }
@@ -48,22 +50,32 @@ class Core(loadInventory: File => IO[InventoryLoaderResult], deckLoader: Core.Fi
         state.deckLists.map { deck =>
           UI.HavesInDeck(
             deck.name,
-            cardsOwned(state.inventory.get, deck.toCardList)
+            cCtx.inventoryAlgebra.cardsOwned(state.inventory.get, deck.toCardList).extract
           )
         }
       )
 
       stay()
-    case Event(DistinctMissing, state: StateData) =>
-      context.parent ! UI.DistinctMissing(
-        state.deckLists.map { deck =>
-          UI.MissingFromDeck(
-            deck.name,
-            cardsToBuy(state.inventory.get, deck.toCardList)
-          )
-        }
+    case Event(DistinctMissing, state: StateData) => {
+      def missingCards(deck: Deck[DeckListCard]): F[UI.MissingFromDeck[DeckListCard]] = {
+        cCtx.inventoryAlgebra
+          .cardsToBuy(state.inventory.get, deck.toCardList)
+          .map { cardsToBuy: DeckList =>
+            UI.MissingFromDeck(
+              deck.name,
+              cardsToBuy
+            )
+          }
+      }
+
+      context.parent ! UI.DistinctMissing[DeckListCard](
+        state.deckLists
+          .map(missingCards)
+          .traverse(identity)
+          .extract
       )
       stay()
+    }
     case Event(PrintInventory, ctx: StateData) =>
       context.parent ! UI.InventoryResult(ctx.inventory.get)
       stay()
@@ -96,9 +108,16 @@ object Core {
   case object PrintInventory extends Message
   case object Exit extends Message
 
+  case class CoreContext[F[_], G[_]](
+    inventoryLoader: File => G[InventoryLoaderResult],
+    deckLoader: Core.FileDeckLoader[DeckListCard, G],
+    inventoryAlgebra: InventoryAlgebra[F, Inventory, DeckList, BuiltDeck]
+  )
+
   type FileDeckLoaderResult[A <: Card[A]] = Writer[Vector[DeckLog], List[Deck[A]]]
-  private[cli] trait FileDeckLoader[A <: Card[A]] {
-    def load(file: File): IO[FileDeckLoaderResult[A]]
+
+  private[cli] trait FileDeckLoader[A <: Card[A], F[_]] {
+    def load(file: File): F[FileDeckLoaderResult[A]]
   }
 
 }

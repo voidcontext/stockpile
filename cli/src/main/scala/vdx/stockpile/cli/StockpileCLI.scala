@@ -3,11 +3,12 @@ package vdx.stockpile.cli
 import java.io.File
 
 import akka.actor.{ActorRefFactory, ActorSystem, Props}
+import cats.{Bimonad, Comonad, Id, Monad}
 import cats.data.Writer
 import cats.effect.IO
 import cats.implicits._
 import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.Deck
+import vdx.stockpile.{Deck, InventoryInterpreter}
 import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
@@ -30,7 +31,7 @@ object StockpileCLI extends App {
     ).load
   }
 
-  val fileDeckLoader = new FileDeckLoader[DeckListCard] {
+  val fileDeckLoader = new FileDeckLoader[DeckListCard, IO] {
     private val regex = """\.txt$""".r
 
     override def load(file: File): IO[FileDeckLoaderResult[DeckListCard]] = {
@@ -62,7 +63,18 @@ object StockpileCLI extends App {
   val ui = system.actorOf(
     Props(
       classOf[UI],
-      (system: ActorRefFactory) => system.actorOf(Props(classOf[Core], loadInventoryFromFile, fileDeckLoader)),
+      (system: ActorRefFactory) => {
+        implicit val ioExtractor: Extractor[IO] = new Extractor[IO] {
+          override def extract[A](fa: IO[A]): A = fa.unsafeRunSync()
+        }
+
+        implicit val idExtractor: Extractor[Id] = new Extractor[Id] {
+          override def extract[A](fa: Id[A]): A = fa
+        }
+        implicit val coreCtx: Core.CoreContext[Id, IO] =
+          Core.CoreContext(loadInventoryFromFile, fileDeckLoader, new InventoryInterpreter {})
+        system.actorOf(Props(new Core[Id, IO]()))
+      },
       new Terminal
     ),
     "ui"
