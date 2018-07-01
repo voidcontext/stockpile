@@ -7,13 +7,15 @@ import cats.data.Writer
 import cats.instances.list._
 import cats.syntax.functor._
 import cats.syntax.traverse._
-import cats.Monad
-import vdx.stockpile.Card.DeckListCard
+import cats.{Id, Monad}
+import vdx.stockpile.Card.{DeckListCard, InventoryCard}
 import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile._
-import vdx.stockpile.instances.eq._
+import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.cli.Extractor.syntax._
+import vdx.stockpile.instances.eq._
+import vdx.stockpile.pricing.CardPrice
 
 class Core[F[_]: Monad: Extractor, G[_]: Monad: Extractor]()(implicit cCtx: Core.CoreContext[F, G])
     extends FSM[Core.State, Core.Data] {
@@ -50,16 +52,16 @@ class Core[F[_]: Monad: Extractor, G[_]: Monad: Extractor]()(implicit cCtx: Core
         state.deckLists.map { deck =>
           UI.HavesInDeck(
             deck.name,
-            cCtx.inventoryAlgebra.cardsOwned(state.inventory.get, deck.toCardList).extract
+            cCtx.inventoryAlgebra.cardsOwned(state.inventory.get)(deck.toCardList)
           )
         }
       )
 
       stay()
     case Event(DistinctMissing, state: StateData) => {
-      def missingCards(deck: Deck[DeckListCard]): F[UI.MissingFromDeck[DeckListCard]] = {
+      def missingCards(deck: Deck[DeckListCard]): Id[UI.MissingFromDeck[DeckListCard]] = {
         cCtx.inventoryAlgebra
-          .cardsToBuy(state.inventory.get, deck.toCardList)
+          .cardsToBuy(state.inventory.get)(deck.toCardList)
           .map { cardsToBuy: DeckList =>
             UI.MissingFromDeck(
               deck.name,
@@ -72,7 +74,6 @@ class Core[F[_]: Monad: Extractor, G[_]: Monad: Extractor]()(implicit cCtx: Core
         state.deckLists
           .map(missingCards)
           .traverse(identity)
-          .extract
       )
       stay()
     }
@@ -111,7 +112,7 @@ object Core {
   case class CoreContext[F[_], G[_]](
     inventoryLoader: File => G[InventoryLoaderResult],
     deckLoader: Core.FileDeckLoader[DeckListCard, G],
-    inventoryAlgebra: InventoryAlgebra[F, Inventory, DeckList, BuiltDeck]
+    inventoryAlgebra: InventoryAlgebra[F, CardList, BuiltDeck, DeckListCard, InventoryCard, CardPrice[DeckListCard]]
   )
 
   type FileDeckLoaderResult[A <: Card[A]] = Writer[Vector[DeckLog], List[Deck[A]]]
