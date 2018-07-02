@@ -19,19 +19,25 @@ package object stockpile {
   type DeckListDeck = Deck[DeckListCard]
   type BuiltDeck = Deck[InventoryCard]
 
-  trait InventoryAlgebra[F[_], CardList[_], BuiltDeck, DeckListCard, InventoryCard, DeckListCardPrice] {
+  trait StockpileAlgebra {
+    type EitherStringOr[A] = Either[String, A]
+  }
+
+  //###################################
+  //# Card / Deck management
+  //###################################
+  trait DeckAlgebra[F[_], CardList[_], DeckListCard, InventoryCard, DeckListCardPrice] extends StockpileAlgebra {
 
     type Inventory = CardList[InventoryCard]
     type DeckList = CardList[DeckListCard]
-
-    type EitherStringOr[A] = Either[String, A]
-    type TradeResult = (Inventory, Inventory)
 
     type ListF[A] = List[F[A]]
     type FList[A] = F[List[A]]
 
     implicit def cardListFoldable: Foldable[CardList]
+
     implicit def applicativeF: Applicative[F]
+
     implicit def flatMapF: FlatMap[F]
 
     def cardList2List[A](cardList: CardList[A]): List[A] = cardListFoldable.toList[A](cardList)
@@ -41,11 +47,8 @@ package object stockpile {
     }
 
     def cardsOwned(inventory: Inventory): Kleisli[Id, DeckList, DeckList]
+
     def cardsToBuy(inventory: Inventory): Kleisli[Id, DeckList, DeckList]
-
-    def addCardToInventory(inventory: Inventory): Kleisli[EitherStringOr, InventoryCard, Inventory]
-
-    def removeCardFromInventory(inventory: Inventory): Kleisli[EitherStringOr, InventoryCard, Inventory]
 
     def priceCard: Kleisli[F, DeckListCard, DeckListCardPrice]
 
@@ -61,6 +64,20 @@ package object stockpile {
 
     def priceCardsToBuy(inventory: Inventory): Kleisli[F, DeckList, List[DeckListCardPrice]] =
       priceCards(cardsToBuy(inventory))
+  }
+
+  //###################################
+  //# Inventory management
+  //###################################
+
+  trait InventoryAlgebra[CardList[_], InventoryCard] extends StockpileAlgebra {
+
+    type Inventory = CardList[InventoryCard]
+    type TradeResult = (Inventory, Inventory)
+
+    def addCardToInventory(inventory: Inventory): Kleisli[EitherStringOr, InventoryCard, Inventory]
+
+    def removeCardFromInventory(inventory: Inventory): Kleisli[EitherStringOr, InventoryCard, Inventory]
 
     def tradeCard(from: Inventory, to: Inventory): Kleisli[EitherStringOr, InventoryCard, TradeResult] = {
       for {

@@ -52,7 +52,7 @@ class Core[F[_]: Monad: Extractor, G[_]: Monad: Extractor]()(implicit cCtx: Core
         state.deckLists.map { deck =>
           UI.HavesInDeck(
             deck.name,
-            cCtx.inventoryAlgebra.cardsOwned(state.inventory.get)(deck.toCardList)
+            cCtx.deckAlgebra.cardsOwned(state.inventory.get)(deck.toCardList)
           )
         }
       )
@@ -60,7 +60,7 @@ class Core[F[_]: Monad: Extractor, G[_]: Monad: Extractor]()(implicit cCtx: Core
       stay()
     case Event(DistinctMissing, state: StateData) => {
       def missingCards(deck: Deck[DeckListCard]): Id[UI.MissingFromDeck[DeckListCard]] = {
-        cCtx.inventoryAlgebra
+        cCtx.deckAlgebra
           .cardsToBuy(state.inventory.get)(deck.toCardList)
           .map { cardsToBuy: DeckList =>
             UI.MissingFromDeck(
@@ -96,7 +96,7 @@ object Core {
   // State Data
   case object Empty extends Data
   final case class StateData(
-    inventory: Option[Inventory],
+    inventory: Option[CardList[InventoryCard]],
     deckLists: List[Deck[DeckListCard]]
   ) extends Data
 
@@ -112,7 +112,7 @@ object Core {
   case class CoreContext[F[_], G[_]](
     inventoryLoader: File => G[InventoryLoaderResult],
     deckLoader: Core.FileDeckLoader[DeckListCard, G],
-    inventoryAlgebra: InventoryAlgebra[F, CardList, BuiltDeck, DeckListCard, InventoryCard, CardPrice[DeckListCard]]
+    deckAlgebra: DeckAlgebra[F, CardList, DeckListCard, InventoryCard, CardPrice[DeckListCard]]
   )
 
   type FileDeckLoaderResult[A <: Card[A]] = Writer[Vector[DeckLog], List[Deck[A]]]

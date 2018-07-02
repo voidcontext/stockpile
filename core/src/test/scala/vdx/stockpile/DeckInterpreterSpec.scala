@@ -6,8 +6,8 @@ import vdx.stockpile.Card.{DeckListCard, Edition, InventoryCard, NonFoil}
 import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.instances.eq._
 
-class InventoryInterpreterSpec extends FlatSpec with Matchers with InventoryInterpreter {
-  val deck: DeckListDeck = Deck(
+class DeckInterpreterSpec extends FlatSpec with Matchers with DeckInterpreter {
+  val deck: Deck[DeckListCard] = Deck(
     "dummy deck",
     mainBoard = CardList(
       DeckListCard("Thought-Knot Seer", 4),

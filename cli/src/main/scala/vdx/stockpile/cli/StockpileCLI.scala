@@ -8,7 +8,7 @@ import cats.data.Writer
 import cats.effect.IO
 import cats.implicits._
 import vdx.stockpile.Card.DeckListCard
-import vdx.stockpile.{Deck, InventoryInterpreter}
+import vdx.stockpile.{Deck, DeckInterpreter}
 import vdx.stockpile.Deck.DeckLog
 import vdx.stockpile.Inventory.InventoryLoaderResult
 import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
@@ -72,7 +72,7 @@ object StockpileCLI extends App {
           override def extract[A](fa: Id[A]): A = fa
         }
         implicit val coreCtx: Core.CoreContext[Id, IO] =
-          Core.CoreContext(loadInventoryFromFile, fileDeckLoader, new InventoryInterpreter {})
+          Core.CoreContext(loadInventoryFromFile, fileDeckLoader, new DeckInterpreter {})
         system.actorOf(Props(new Core[Id, IO]()))
       },
       new Terminal

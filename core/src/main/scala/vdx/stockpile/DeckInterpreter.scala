@@ -10,8 +10,7 @@ import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.instances.cardlist._
 import vdx.stockpile.pricing.CardPrice
 
-trait InventoryInterpreter
-    extends InventoryAlgebra[Id, CardList, BuiltDeck, DeckListCard, InventoryCard, CardPrice[DeckListCard]] {
+trait DeckInterpreter extends DeckAlgebra[Id, CardList, DeckListCard, InventoryCard, CardPrice[DeckListCard]] {
 
   override implicit def applicativeF: Applicative[Id] = cats.catsInstancesForId
 
@@ -43,12 +42,7 @@ trait InventoryInterpreter
         )
       }
       .pure[Id]
-
   }
-
-  override def addCardToInventory(inventory: Inventory): Kleisli[EitherStringOr, InventoryCard, Inventory] = ???
-
-  override def removeCardFromInventory(inventory: Inventory): Kleisli[EitherStringOr, InventoryCard, Inventory] = ???
 
   override def priceCard: Kleisli[Id, DeckListCard, CardPrice[DeckListCard]] = ???
 }

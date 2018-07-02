@@ -15,7 +15,7 @@ import vdx.stockpile.Inventory.{InventoryError, InventoryLoaderResult, Inventory
 import vdx.stockpile.cardlist.CardList
 import vdx.stockpile.cli.Core.{FileDeckLoader, FileDeckLoaderResult}
 import vdx.stockpile.instances.eq._
-import vdx.stockpile.{Deck, Inventory, InventoryInterpreter}
+import vdx.stockpile.{Deck, Inventory, DeckInterpreter}
 
 import scala.concurrent.duration._
 
@@ -53,7 +53,7 @@ class CoreSpec extends FlatSpec with Matchers {
     implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
       defaultLoader(inventory),
       defaultDeckLoader(decks),
-      new InventoryInterpreter {}
+      new DeckInterpreter {}
     )
 
     TestFSMRef(new Core())
@@ -90,7 +90,7 @@ class CoreSpec extends FlatSpec with Matchers {
     implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext[Id, Id](
       (f: File) => CardList.empty[InventoryCard].writer(logs),
       (file: File) => ???,
-      new InventoryInterpreter {}
+      new DeckInterpreter {}
     )
 
     val core = parent.childActorOf(Props(new Core[Id, Id]()))
@@ -115,7 +115,7 @@ class CoreSpec extends FlatSpec with Matchers {
     implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
       defaultLoader(),
       (file: File) => ???,
-      new InventoryInterpreter {}
+      new DeckInterpreter {}
     )
 
     val parent = TestProbe()
@@ -157,7 +157,7 @@ class CoreSpec extends FlatSpec with Matchers {
     implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
       defaultLoader(),
       defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))),
-      new InventoryInterpreter {}
+      new DeckInterpreter {}
     )
 
     val parent = TestProbe()
@@ -186,7 +186,7 @@ class CoreSpec extends FlatSpec with Matchers {
     implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
       defaultLoader(inventory),
       defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))),
-      new InventoryInterpreter {}
+      new DeckInterpreter {}
     )
 
     val core = parent.childActorOf(Props(new Core[Id, Id]()))
@@ -225,7 +225,7 @@ class CoreSpec extends FlatSpec with Matchers {
     implicit val coreContext: Core.CoreContext[Id, Id] = Core.CoreContext(
       defaultLoader(inventory),
       defaultDeckLoader(List(Deck("dummy deck", mainBoard = mainBoard))),
-      new InventoryInterpreter {}
+      new DeckInterpreter {}
     )
 
     val core = parent.childActorOf(Props(new Core[Id, Id]()))
